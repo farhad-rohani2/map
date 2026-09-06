@@ -322,8 +322,11 @@
         .badge-pending {
             background: #f97316;
         }
-        .badge-none {
+        .badge-unverified {
             background: #6c757d;
+        }
+        .badge-none {
+            background: #dc3545;
         }
         .pagination {
             display: flex;
@@ -394,8 +397,11 @@
         .status-badge.pending {
             background: #f97316;
         }
-        .status-badge.none {
+        .status-badge.unverified {
             background: #6c757d;
+        }
+        .status-badge.none {
+            background: #dc3545;
         }
 
         /* سایر */
@@ -715,6 +721,29 @@
     const routeLayer = L.layerGroup().addTo(map);
 
     // ============================================================
+    // تابع کمکی برای تعیین وضعیت مختصات (اصلاح شده)
+    // ============================================================
+    function getCoordStatus(school) {
+        // بررسی وجود مختصات معتبر
+        const hasValidCoords = school &&
+            Number.isFinite(school.lat) &&
+            Number.isFinite(school.lng) &&
+            school.lat != 0 &&
+            school.lng != 0;
+
+        if (school._coords_verified) {
+            return { label: 'تایید شده', cssClass: 'verified' };
+        } else if (school._geocoded) {
+            return { label: 'تقریبی', cssClass: 'pending' };
+        } else if (hasValidCoords) {
+            // مختصات دارد ولی تایید نشده
+            return { label: 'دارد (تایید نشده)', cssClass: 'unverified' };
+        } else {
+            return { label: 'بدون مختصات', cssClass: 'none' };
+        }
+    }
+
+    // ============================================================
     // انتخاب مختصات از نقشه
     // ============================================================
     function enableCoordinatePicker() {
@@ -821,10 +850,8 @@
     // تغییر فیلترها (هم برای نقشه و هم برای لیست)
     // ============================================================
     function onFilterChange() {
-        // برای نقشه (با تاخیر)
         clearTimeout(loadTimeout);
         loadTimeout = setTimeout(loadFromServer, 400);
-        // برای لیست همه مدارس
         loadAllSchools(1);
     }
 
@@ -928,11 +955,13 @@
         displayedSchools.forEach((s, idx) => {
             let color = '#1976d2';
             let label = '';
-            if (s._geocode_status === 'pending' && s._geocoded) {
+            if (s._coords_verified) {
+                color = '#198754';
+            } else if (s._geocoded) {
                 color = '#f97316';
                 label = '?';
-            } else if (s._coords_verified) {
-                color = '#198754';
+            } else if (Number.isFinite(s.lat) && Number.isFinite(s.lng) && s.lat != 0 && s.lng != 0) {
+                color = '#6c757d'; // خاکستری برای مختصات تایید نشده
             }
             if (s.visited) label = '✓';
             const icon = L.divIcon({
@@ -952,10 +981,11 @@
         currentSchoolIndex = i;
         const s = schools[i];
         if (!s) return;
-        showSchoolInfo(s, i); // نمایش در سایدبار
+        showSchoolInfo(s, i);
         // پاپ‌آپ نقشه
         let coordsInfo = '';
-        if (s._geocode_status === 'pending' && s._geocoded) {
+        const status = getCoordStatus(s);
+        if (status.cssClass === 'pending') {
             coordsInfo = `
                 <div class="geocode-pending">
                     <div class="status">⚠️ این موقعیت بر اساس آدرس تخمین زده شده است</div>
@@ -966,11 +996,19 @@
                     ${s._geocode_info?.display_name ? `<div style="font-size:10px;color:#666;">${esc(s._geocode_info.display_name)}</div>` : ''}
                 </div>
             `;
-        } else if (s._coords_verified) {
+        } else if (status.cssClass === 'verified') {
             coordsInfo = `
                 <div style="background:#d1e7dd;padding:6px;border-radius:6px;margin:4px 0">
                     <span style="color:#198754;font-weight:bold;">✅ مختصات تایید شده</span>
                     <div style="font-size:11px;color:#666;">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</div>
+                </div>
+            `;
+        } else if (status.cssClass === 'unverified') {
+            coordsInfo = `
+                <div style="background:#e2e3e5;padding:6px;border-radius:6px;margin:4px 0">
+                    <span style="color:#6c757d;font-weight:bold;">⚠️ مختصات دارد (تایید نشده)</span>
+                    <div style="font-size:11px;color:#666;">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</div>
+                    <button class="success" onclick="verifyCoords(${i})" style="padding:4px 10px;font-size:11px;margin:4px 0">✅ تایید مختصات</button>
                 </div>
             `;
         }
@@ -1001,19 +1039,14 @@
     // نمایش اطلاعات کامل مدرسه در سایدبار (جزئیات کامل)
     // ============================================================
     function showSchoolInfo(s, index) {
-        // اگر index داده نشده، در schools جستجو کن
         if (index === undefined) {
             const found = schools.findIndex(sch => sch.id === s.id);
             if (found !== -1) index = found;
         }
         const school = s;
-        const isEditable = (index !== undefined && index !== null);
+        const status = getCoordStatus(school);
 
-        // ساخت کارت اطلاعات کامل
-        let statusBadge = '';
-        if (school._coords_verified) statusBadge = '<span class="status-badge verified">تایید شده</span>';
-        else if (school._geocoded) statusBadge = '<span class="status-badge pending">تقریبی</span>';
-        else statusBadge = '<span class="status-badge none">بدون مختصات</span>';
+        let statusBadge = `<span class="status-badge ${status.cssClass}">${status.label}</span>`;
 
         const coordsStr = (school.lat && school.lng && !isNaN(school.lat) && !isNaN(school.lng)) ?
             `${school.lat.toFixed(6)}, ${school.lng.toFixed(6)}` : 'نامشخص';
@@ -1065,7 +1098,7 @@
     }
 
     // ============================================================
-    // نمایش فرم ویرایش مدرسه (همه فیلدها)
+    // نمایش فرم ویرایش مدرسه
     // ============================================================
     function showEditForm(i) {
         const s = schools[i];
@@ -1343,7 +1376,6 @@
     // ============================================================
     async function saveSchool(i) {
         const s = schools[i];
-        // جمع‌آوری همه فیلدها
         s.name = document.getElementById('e_name').value.trim();
         s.school_type = document.getElementById('e_school_type').value;
         s.sex = document.getElementById('e_sex').value;
@@ -1422,7 +1454,6 @@
                 msg('✅ اطلاعات در سرور ذخیره شد.');
                 renderMarkers();
                 updateStats();
-                // نمایش مجدد اطلاعات
                 showSchoolInfo(s, i);
             } else {
                 msg('❌ خطا در ذخیره: ' + (result.error || ''), true);
@@ -1509,7 +1540,6 @@
         document.getElementById('filterLibrary').value = '';
         document.getElementById('filterLab').value = '';
         document.getElementById('filterSmart').value = '';
-        // بارگذاری مجدد نقشه و لیست
         loadFromServer();
         loadAllSchools(1);
     }
@@ -1524,6 +1554,7 @@
             if (hasCoords) {
                 if (s._coords_verified) verified++;
                 else if (s._geocoded) geocoded++;
+                // اگر مختصات داره ولی تایید نشده، در آمار withoutCoords محسوب نمیشه
             } else {
                 withoutCoords++;
             }
@@ -1686,17 +1717,16 @@
         } else {
             const start = (page - 1) * perPage;
             tbody.innerHTML = items.map((s, idx) => {
-                let statusHtml = '';
-                if (s._coords_verified) statusHtml = '<span class="badge badge-verified">تایید شده</span>';
-                else if (s._geocoded) statusHtml = '<span class="badge badge-pending">تقریبی</span>';
-                else statusHtml = '<span class="badge badge-none">بدون مختصات</span>';
+                const status = getCoordStatus(s);
+                const badgeClass = status.cssClass;
+                const badgeLabel = status.label;
                 return `<tr onclick="showSchoolFromList(${s.id})">
                         <td>${start + idx + 1}</td>
                         <td>${esc(s.name || '')}</td>
                         <td>${esc(s.city || s.city_title || '')}</td>
                         <td>${esc(s.section || s.section_title || '')}</td>
                         <td>${esc(s.sex || s.sex_title || '')}</td>
-                        <td>${statusHtml}</td>
+                        <td><span class="badge badge-${badgeClass}">${badgeLabel}</span></td>
                     </tr>`;
             }).join('');
         }
@@ -1719,27 +1749,21 @@
     // نمایش اطلاعات مدرسه از لیست (با کلیک روی سطر)
     // ============================================================
     function showSchoolFromList(id) {
-        // پیدا کردن مدرسه در allSchoolsData (داده‌های صفحه جاری)
         const school = allSchoolsData.find(s => s.id == id);
         if (!school) {
             msg('❌ مدرسه یافت نشد', true);
             return;
         }
-        // اگر مدرسه در آرایه اصلی schools وجود ندارد، آن را اضافه کن
         let idx = schools.findIndex(s => s.id == id);
         if (idx === -1) {
-            // اضافه کردن به schools (با normalize بعدی)
             school.__index = schools.length;
             schools.push(school);
             idx = schools.length - 1;
             normalizeSchools();
-            // همچنین برای نمایش روی نقشه، نیاز به رندر مجدد داریم
             renderMarkers();
             updateStats();
         }
-        // نمایش اطلاعات کامل در سایدبار
         showSchoolInfo(schools[idx], idx);
-        // اگر روی نقشه قابل مشاهده است، پاپ‌آپ را هم باز کن
         const marker = markers.find(m => {
             const p = m.getLatLng();
             return Math.abs(p.lat - school.lat) < 1e-9 && Math.abs(p.lng - school.lng) < 1e-9;
@@ -1747,9 +1771,7 @@
         if (marker) {
             marker.openPopup();
         } else if (Number.isFinite(school.lat) && Number.isFinite(school.lng)) {
-            // اگر مدرسه در محدوده نقشه نیست، به آن زوم کن
             map.setView([school.lat, school.lng], 15);
-            // یک مارکر موقت اضافه کن
             L.marker([school.lat, school.lng]).addTo(map)
                 .bindPopup(`<b>${esc(school.name)}</b><br>مختصات: ${school.lat.toFixed(6)}, ${school.lng.toFixed(6)}`)
                 .openPopup();
