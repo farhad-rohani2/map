@@ -403,6 +403,24 @@
         .status-badge.none {
             background: #dc3545;
         }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        .action-buttons button {
+            flex: 0 1 auto;
+        }
+
+        /* ---------- انیمیشن پالس برای هایلایت مارکر ---------- */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.4); opacity: 1; }
+        }
+        .highlight-marker div {
+            animation: pulse 0.6s ease-in-out infinite alternate;
+        }
 
         /* سایر */
         .geocoded-marker {
@@ -501,7 +519,7 @@
             <button class="info" onclick="loadStats()" style="width:100%;margin-top:6px">🔄 بروزرسانی آمار</button>
         </div>
 
-        <!-- فیلترهای پیشرفته (همان‌ها) -->
+        <!-- فیلترهای پیشرفته -->
         <div class="box">
             <h2>🔍 فیلترهای پیشرفته</h2>
             <div class="filter-group">
@@ -721,10 +739,9 @@
     const routeLayer = L.layerGroup().addTo(map);
 
     // ============================================================
-    // تابع کمکی برای تعیین وضعیت مختصات (اصلاح شده)
+    // تابع کمکی برای تعیین وضعیت مختصات
     // ============================================================
     function getCoordStatus(school) {
-        // بررسی وجود مختصات معتبر
         const hasValidCoords = school &&
             Number.isFinite(school.lat) &&
             Number.isFinite(school.lng) &&
@@ -736,11 +753,67 @@
         } else if (school._geocoded) {
             return { label: 'تقریبی', cssClass: 'pending' };
         } else if (hasValidCoords) {
-            // مختصات دارد ولی تایید نشده
             return { label: 'دارد (تایید نشده)', cssClass: 'unverified' };
         } else {
             return { label: 'بدون مختصات', cssClass: 'none' };
         }
+    }
+
+    // ============================================================
+    // تابع نمایش مدرسه روی نقشه (با هایلایت و انیمیشن)
+    // ============================================================
+    function showOnMap(index) {
+        const s = schools[index];
+        if (!s) return;
+        if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng) || s.lat == 0 || s.lng == 0) {
+            msg('❌ این مدرسه مختصات معتبری ندارد.', true);
+            return;
+        }
+        // ۱. زوم به موقعیت مدرسه
+        map.setView([s.lat, s.lng], 16);
+
+        // ۲. پیدا کردن مارکر موجود
+        const marker = markers.find(m => {
+            const p = m.getLatLng();
+            return Math.abs(p.lat - s.lat) < 1e-9 && Math.abs(p.lng - s.lng) < 1e-9;
+        });
+
+        // ۳. اگر مارکر وجود داشت، آن را هایلایت کن
+        if (marker) {
+            // باز کردن پاپ‌آپ
+            marker.openPopup();
+            // ذخیره آیکون اصلی
+            const originalIcon = marker.getIcon();
+            // آیکون بزرگتر با رنگ قرمز و انیمیشن پالس
+            const highlightIcon = L.divIcon({
+                html: '<div style="background:#ff0000;width:34px;height:34px;border-radius:50%;border:4px solid yellow;box-shadow:0 0 25px rgba(255,0,0,0.9);"></div>',
+                iconSize: [34, 34],
+                iconAnchor: [17, 17],
+                className: 'highlight-marker'
+            });
+            marker.setIcon(highlightIcon);
+            // بعد از ۳ ثانیه برگردان
+            setTimeout(() => {
+                marker.setIcon(originalIcon);
+            }, 3000);
+            msg(`📍 ${esc(s.name)} روی نقشه (مارکر هایلایت شد)`);
+            return;
+        }
+
+        // ۴. اگر مارکر وجود نداشت، یک مارکر موقت با انیمیشن بساز
+        const tempIcon = L.divIcon({
+            html: '<div style="background:#ff0000;width:34px;height:34px;border-radius:50%;border:4px solid yellow;box-shadow:0 0 25px rgba(255,0,0,0.9);"></div>',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+            className: 'highlight-marker'
+        });
+        const tempM = L.marker([s.lat, s.lng], { icon: tempIcon }).addTo(map);
+        tempM.bindPopup(`<b>${esc(s.name)}</b><br>مختصات: ${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}`).openPopup();
+        // بعد از ۵ ثانیه حذف شود
+        setTimeout(() => {
+            map.removeLayer(tempM);
+        }, 5000);
+        msg(`📍 ${esc(s.name)} روی نقشه (مارکر موقت)`);
     }
 
     // ============================================================
@@ -847,7 +920,7 @@
     }
 
     // ============================================================
-    // تغییر فیلترها (هم برای نقشه و هم برای لیست)
+    // تغییر فیلترها
     // ============================================================
     function onFilterChange() {
         clearTimeout(loadTimeout);
@@ -961,7 +1034,7 @@
                 color = '#f97316';
                 label = '?';
             } else if (Number.isFinite(s.lat) && Number.isFinite(s.lng) && s.lat != 0 && s.lng != 0) {
-                color = '#6c757d'; // خاکستری برای مختصات تایید نشده
+                color = '#6c757d';
             }
             if (s.visited) label = '✓';
             const icon = L.divIcon({
@@ -1045,6 +1118,8 @@
         }
         const school = s;
         const status = getCoordStatus(school);
+        const hasValidCoords = Number.isFinite(school.lat) && Number.isFinite(school.lng) && school.lat != 0 && school.lng !=
+            0;
 
         let statusBadge = `<span class="status-badge ${status.cssClass}">${status.label}</span>`;
 
@@ -1053,9 +1128,11 @@
 
         const html = `
                 <div style="margin-bottom:8px;">
-                    <button class="secondary" onclick="editSchool(${index})" style="float:left;">✏️ ویرایش</button>
-                    <button class="success" onclick="markVisited(${index})" style="float:left;margin-left:5px;">${school.visited ? '↩️ لغو بازدید' : '✅ ثبت بازدید'}</button>
-                    <div style="clear:both;"></div>
+                    <div class="action-buttons">
+                        <button class="secondary" onclick="editSchool(${index})">✏️ ویرایش</button>
+                        <button class="success" onclick="markVisited(${index})">${school.visited ? '↩️ لغو بازدید' : '✅ ثبت بازدید'}</button>
+                        ${hasValidCoords ? `<button class="info" onclick="showOnMap(${index})">📍 نمایش روی نقشه</button>` : ''}
+                    </div>
                 </div>
                 <div class="school-detail-grid">
                     <div class="full-width"><span class="label">نام:</span> <span class="value">${esc(school.name || '')}</span></div>
@@ -1554,7 +1631,6 @@
             if (hasCoords) {
                 if (s._coords_verified) verified++;
                 else if (s._geocoded) geocoded++;
-                // اگر مختصات داره ولی تایید نشده، در آمار withoutCoords محسوب نمیشه
             } else {
                 withoutCoords++;
             }
