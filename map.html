@@ -487,6 +487,20 @@
             border: 2px solid #fff;
             box-shadow: 0 1px 5px #0005;
         }
+
+        /* ---------- استایل مارکر GPS ---------- */
+        .gps-marker div {
+            background: #007bff;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.4);
+            transition: box-shadow 0.3s;
+        }
+        .gps-marker.active div {
+            box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -517,6 +531,8 @@
                 <div class="stat-item"><b id="visitedCount">0</b><span class="label">بازدید شده</span></div>
             </div>
             <button class="info" onclick="loadStats()" style="width:100%;margin-top:6px">🔄 بروزرسانی آمار</button>
+            <!-- دکمه GPS -->
+            <button class="info" id="gpsButton" onclick="toggleGPS()" style="width:100%;margin-top:6px;">📍 فعال‌سازی GPS</button>
         </div>
 
         <!-- فیلترهای پیشرفته -->
@@ -728,6 +744,12 @@
     // متغیرهای انتخاب مختصات از نقشه
     let tempMarker = null;
     let isSelectingCoords = false;
+
+    // متغیرهای GPS
+    let gpsMarker = null;
+    let gpsCircle = null;
+    let gpsWatchId = null;
+    let gpsActive = false;
 
     const map = L.map('map', { zoomControl: true }).setView([36.214, 58.81], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1997,6 +2019,125 @@
         } catch (e) {
             msg('❌ خطا: ' + e.message, true);
         }
+    }
+
+    // ============================================================
+    // GPS - موقعیت‌یابی زنده
+    // ============================================================
+    function toggleGPS() {
+        const btn = document.getElementById('gpsButton');
+
+        // اگر فعال است، غیرفعال کن
+        if (gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+            if (gpsMarker) { map.removeLayer(gpsMarker);
+                gpsMarker = null; }
+            if (gpsCircle) { map.removeLayer(gpsCircle);
+                gpsCircle = null; }
+            gpsActive = false;
+            btn.textContent = '📍 فعال‌سازی GPS';
+            btn.classList.remove('success');
+            msg('📍 GPS غیرفعال شد');
+            return;
+        }
+
+        // بررسی پشتیبانی مرورگر
+        if (!navigator.geolocation) {
+            msg('❌ مرورگر شما از GPS پشتیبانی نمی‌کند.', true);
+            return;
+        }
+
+        // درخواست موقعیت یک بار برای راه‌اندازی
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const accuracy = pos.coords.accuracy || 50;
+                // ایجاد مارکر و دایره دقت
+                addGpsMarker(lat, lng, accuracy);
+                // شروع نظارت بر تغییرات موقعیت
+                gpsWatchId = navigator.geolocation.watchPosition(
+                    (newPos) => {
+                        updateGpsPosition(
+                            newPos.coords.latitude,
+                            newPos.coords.longitude,
+                            newPos.coords.accuracy || 50
+                        );
+                    },
+                    (err) => {
+                        msg('❌ خطای GPS: ' + err.message, true);
+                        // در صورت خطا، GPS را غیرفعال می‌کنیم؟
+                        // بهتر است غیرفعال نکنیم، فقط خطا را نشان دهیم
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 5000
+                    }
+                );
+                gpsActive = true;
+                btn.textContent = '📍 غیرفعال‌سازی GPS';
+                btn.classList.add('success');
+                msg('📍 GPS فعال شد - موقعیت شما روی نقشه نمایش داده می‌شود');
+            },
+            (err) => {
+                msg('❌ خطا در دریافت موقعیت: ' + err.message, true);
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000
+            }
+        );
+    }
+
+    function addGpsMarker(lat, lng, accuracy) {
+        // حذف مارکر و دایره قبلی اگر وجود داشته باشد
+        if (gpsMarker) map.removeLayer(gpsMarker);
+        if (gpsCircle) map.removeLayer(gpsCircle);
+
+        // آیکون مارکر GPS (دایره آبی با حاشیه سفید و سایه)
+        const gpsIcon = L.divIcon({
+            html: '<div style="background:#007bff;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 0 0 4px rgba(0,123,255,0.4);"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+            className: 'gps-marker active'
+        });
+
+        gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+
+        // دایره دقت موقعیت
+        gpsCircle = L.circle([lat, lng], {
+            radius: accuracy || 50,
+            color: '#007bff',
+            fillColor: '#007bff',
+            fillOpacity: 0.15,
+            weight: 1,
+            opacity: 0.3
+        }).addTo(map);
+
+        // پاپ‌آپ برای مارکر GPS
+        gpsMarker.bindPopup(`📍 موقعیت شما<br>عرض: ${lat.toFixed(6)}<br>طول: ${lng.toFixed(6)}<br>دقت: ${Math.round(accuracy || 50)} متر`);
+
+        // زوم به موقعیت جدید (اختیاری)
+        // map.setView([lat, lng], 16);
+    }
+
+    function updateGpsPosition(lat, lng, accuracy) {
+        if (!gpsMarker || !gpsCircle) {
+            // اگر به هر دلیل مارکر وجود ندارد، دوباره ایجاد کن
+            addGpsMarker(lat, lng, accuracy);
+            return;
+        }
+        // به‌روزرسانی موقعیت مارکر
+        gpsMarker.setLatLng([lat, lng]);
+        // به‌روزرسانی دایره دقت
+        gpsCircle.setLatLng([lat, lng]);
+        gpsCircle.setRadius(accuracy || 50);
+        // به‌روزرسانی پاپ‌آپ
+        gpsMarker.setPopupContent(
+            `📍 موقعیت شما<br>عرض: ${lat.toFixed(6)}<br>طول: ${lng.toFixed(6)}<br>دقت: ${Math.round(accuracy || 50)} متر`
+        );
+        // (اختیاری) نقشه را به موقعیت جدید منتقل کن
+        // map.panTo([lat, lng]);
     }
 
     // ============================================================
