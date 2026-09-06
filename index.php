@@ -592,6 +592,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // =============================================================
+// اکشن ۹: دریافت لیست همه مدارس با جستجوی سراسری و صفحه‌بندی
+// =============================================================
+if (isset($_GET['action']) && $_GET['action'] === 'get_all_schools') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (!file_exists($dataFile)) {
+        echo json_encode(['error' => 'فایل data.json یافت نشد']);
+        exit;
+    }
+
+    $json = file_get_contents($dataFile);
+    $schools = json_decode($json, true);
+    if (!is_array($schools)) {
+        echo json_encode(['error' => 'فرمت داده نامعتبر']);
+        exit;
+    }
+
+    // پارامترها
+    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+    $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    $perPage = isset($_GET['per_page']) ? intval($_GET['per_page']) : 20;
+
+    if ($page < 1) $page = 1;
+    if ($perPage < 1) $perPage = 20;
+
+    // فیلتر بر اساس جستجوی سراسری
+    $filtered = $schools;
+    if (!empty($search)) {
+        $filtered = array_filter($schools, function($s) use ($search) {
+            $text = json_encode($s, JSON_UNESCAPED_UNICODE);
+            return stripos($text, $search) !== false;
+        });
+        // بازآرایی ایندکس‌ها
+        $filtered = array_values($filtered);
+    }
+
+    $total = count($filtered);
+    $offset = ($page - 1) * $perPage;
+    $pagedData = array_slice($filtered, $offset, $perPage);
+
+    echo json_encode([
+        'data' => $pagedData,
+        'total' => $total,
+        'page' => $page,
+        'per_page' => $perPage
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// =============================================================
 // نمایش صفحه اصلی (map.html)
 // =============================================================
 if (file_exists(__DIR__ . '/map.html')) {

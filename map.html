@@ -1,92 +1,451 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>نقشه مدارس - مدیریت پیشرفته</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        *{box-sizing:border-box}
-        body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f5f6f8;color:#222;overflow:hidden}
-        #app{display:flex;height:100vh;width:100vw}
-        #sidebar{
-            width:420px; background:#fff; overflow:auto; padding:16px;
-            box-shadow:0 0 15px #0002; z-index:1000;
-            transition: transform 0.3s ease; height:100vh; position:relative; flex-shrink:0;
+        * {
+            box-sizing: border-box;
         }
-        #map{flex:1;height:100vh;position:relative}
-        #hamburger{
-            position:fixed; top:12px; right:12px; z-index:2000;
-            background:#1976d2; color:white; border:none; border-radius:8px;
-            padding:10px 12px; font-size:24px; line-height:1; cursor:pointer;
-            box-shadow:0 2px 8px rgba(0,0,0,0.3); display:none;
+        body {
+            margin: 0;
+            font-family: Tahoma, Arial, sans-serif;
+            background: #f5f6f8;
+            color: #222;
+            overflow: hidden;
         }
-        #hamburger:hover{background:#1565c0}
-        #sidebar-overlay{display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); z-index:999}
-        h1{font-size:20px;margin:0 0 14px}
-        h2{font-size:16px;margin:18px 0 8px}
-        .box{border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:12px;background:#fafafa}
-        button,input,select,textarea{font-family:inherit;font-size:13px}
-        button{border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#1976d2;color:white;margin:3px}
-        button.secondary{background:#666}
-        button.success{background:#198754}
-        button.warning{background:#d98c00}
-        button.danger{background:#c62828}
-        button.info{background:#0dcaf0;color:#000}
-        button:disabled{opacity:0.5;cursor:not-allowed}
-        input,select,textarea{width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;margin:4px 0 8px;background:white}
-        textarea{min-height:70px;resize:vertical}
-        label{font-size:12px;color:#555;display:block;margin-top:6px}
-        .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-        .stat-item{background:#f0f2f5;padding:8px;border-radius:8px;text-align:center}
-        .stat-item b{display:block;font-size:18px}
-        .stat-item .label{font-size:11px;color:#666}
-        .school-popup{min-width:280px;direction:rtl;max-height:450px;overflow:auto}
-        .school-popup h3{margin:0 0 8px;font-size:16px}
-        .school-popup table{width:100%;font-size:12px}
-        .school-popup td{padding:3px}
-        .school-popup td:first-child{font-weight:bold;width:35%}
-        .field-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-        .route-item{padding:8px;border-bottom:1px solid #eee;font-size:13px}
-        .muted{color:#777;font-size:12px}
-        #message{padding:8px;border-radius:8px;background:#eef5ff;margin-top:8px;font-size:12px;min-height:38px}
-        .leaflet-popup-content-wrapper{border-radius:12px}
-        .route-badge{background:#1976d2;color:#fff;border-radius:50%;width:28px;height:28px;line-height:28px;text-align:center;font-weight:bold;border:2px solid white;box-shadow:0 1px 5px #0005}
-        .filter-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
-        .filter-group{margin-bottom:6px}
-        .filter-group select{font-size:12px;padding:6px}
-        .geocode-pending{background:#fff3cd;border:1px solid #ffc107;padding:8px;border-radius:6px;margin:6px 0}
-        .geocode-pending .status{color:#856404;font-size:12px}
-        .coords-info{font-size:11px;color:#666;margin:4px 0;padding:4px;background:#f8f9fa;border-radius:4px}
-        .coords-info .new-coords{color:#d98c00;font-weight:bold}
-        .coords-info .verified-coords{color:#198754;font-weight:bold}
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ---------- نوار کناری ---------- */
+        #sidebar {
+            width: 460px;
+            background: #fff;
+            overflow: auto;
+            padding: 16px;
+            box-shadow: 0 0 15px #0002;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            height: 100vh;
+            position: relative;
+            flex-shrink: 0;
+        }
+        #map {
+            flex: 1;
+            height: 100vh;
+            position: relative;
+        }
+        #hamburger {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 2000;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+        #hamburger:hover {
+            background: #1565c0;
+        }
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+        }
         @media (max-width: 768px) {
-            #sidebar{position:fixed;top:0;right:0;width:88vw;max-width:380px;height:100vh;transform:translateX(100%);box-shadow:0 0 25px rgba(0,0,0,0.3);z-index:1000;flex-shrink:0}
-            #sidebar.open{transform:translateX(0)}
-            #sidebar-overlay.open{display:block}
-            #hamburger{display:block}
-            #map{height:100vh;width:100vw}
-            #app{flex-direction:row}
-            .stats-grid{grid-template-columns:repeat(2,1fr)}
+            #sidebar {
+                position: fixed;
+                top: 0;
+                right: 0;
+                width: 88vw;
+                max-width: 380px;
+                height: 100vh;
+                transform: translateX(100%);
+                box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                flex-shrink: 0;
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #sidebar-overlay.open {
+                display: block;
+            }
+            #hamburger {
+                display: block;
+            }
+            #map {
+                height: 100vh;
+                width: 100vw;
+            }
+            #app {
+                flex-direction: row;
+            }
         }
         @media (min-width: 769px) {
-            #sidebar{transform:translateX(0)!important;position:relative;display:block}
-            #sidebar-overlay{display:none!important}
-            #hamburger{display:none!important}
+            #sidebar {
+                transform: translateX(0) !important;
+                position: relative;
+                display: block;
+            }
+            #sidebar-overlay {
+                display: none !important;
+            }
+            #hamburger {
+                display: none !important;
+            }
         }
-        .geocoded-marker{filter: hue-rotate(30deg) saturate(1.5);}
+
+        /* ---------- استایل‌های عمومی ---------- */
+        h1 {
+            font-size: 20px;
+            margin: 0 0 14px;
+        }
+        h2 {
+            font-size: 16px;
+            margin: 18px 0 8px;
+        }
+        .box {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+            font-size: 13px;
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 9px 12px;
+            cursor: pointer;
+            background: #1976d2;
+            color: #fff;
+            margin: 3px;
+        }
+        button.secondary {
+            background: #666;
+        }
+        button.success {
+            background: #198754;
+        }
+        button.warning {
+            background: #d98c00;
+        }
+        button.danger {
+            background: #c62828;
+        }
+        button.info {
+            background: #0dcaf0;
+            color: #000;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin: 4px 0 8px;
+            background: #fff;
+        }
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+        label {
+            font-size: 12px;
+            color: #555;
+            display: block;
+            margin-top: 6px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+        .stat-item {
+            background: #f0f2f5;
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-item b {
+            display: block;
+            font-size: 18px;
+        }
+        .stat-item .label {
+            font-size: 11px;
+            color: #666;
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .filter-group {
+            margin-bottom: 6px;
+        }
+        .filter-group select {
+            font-size: 12px;
+            padding: 6px;
+        }
+        .muted {
+            color: #777;
+            font-size: 12px;
+        }
+
+        /* ---------- نوتیفیکیشن ---------- */
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            background: #eef5ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 12px;
+            padding: 14px 24px;
+            padding-left: 50px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            max-width: 90%;
+            min-width: 280px;
+            text-align: center;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+            pointer-events: none;
+            direction: rtl;
+        }
+        #notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        #notification.error {
+            background: #ffecec;
+            border-color: #f5c2c2;
+        }
+        #notification .close-btn {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #666;
+            padding: 0 6px;
+            line-height: 1;
+        }
+        #notification .close-btn:hover {
+            color: #000;
+        }
+
+        /* ---------- لیست مدارس (جدول + صفحه‌بندی) ---------- */
+        .school-list-container {
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .school-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .school-list-table th {
+            background: #f8f9fa;
+            padding: 8px 6px;
+            border-bottom: 2px solid #dee2e6;
+            text-align: right;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .school-list-table td {
+            padding: 6px 6px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+        .school-list-table tr:hover td {
+            background: #f1f9ff;
+        }
+        .school-list-table .badge {
+            display: inline-block;
+            padding: 0 6px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .badge-verified {
+            background: #198754;
+        }
+        .badge-pending {
+            background: #f97316;
+        }
+        .badge-none {
+            background: #6c757d;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 4px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 4px 14px;
+            font-size: 13px;
+            margin: 0;
+        }
+        .pagination .page-info {
+            font-size: 13px;
+            color: #555;
+        }
+        .pagination .per-page {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+        .pagination .per-page select {
+            width: 60px;
+            padding: 4px;
+            margin: 0;
+        }
+        .school-list-search {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .school-list-search input {
+            flex: 1;
+            margin: 0;
+        }
+
+        /* ---------- سایر ---------- */
+        .geocoded-marker {
+            filter: hue-rotate(30deg) saturate(1.5);
+        }
+        .school-popup {
+            min-width: 280px;
+            direction: rtl;
+            max-height: 450px;
+            overflow: auto;
+        }
+        .school-popup h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
+        .school-popup table {
+            width: 100%;
+            font-size: 12px;
+        }
+        .school-popup td {
+            padding: 3px;
+        }
+        .school-popup td:first-child {
+            font-weight: bold;
+            width: 35%;
+        }
+        .route-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        .geocode-pending {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 8px;
+            border-radius: 6px;
+            margin: 6px 0;
+        }
+        .coords-info {
+            font-size: 11px;
+            color: #666;
+            margin: 4px 0;
+            padding: 4px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .coords-info .new-coords {
+            color: #d98c00;
+            font-weight: bold;
+        }
+        .coords-info .verified-coords {
+            color: #198754;
+            font-weight: bold;
+        }
+        .route-badge {
+            background: #1976d2;
+            color: #fff;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 5px #0005;
+        }
     </style>
 </head>
-
 <body>
+
+<!-- ---------- نوتیفیکیشن ---------- -->
+<div id="notification">
+    <span id="notification-text"></span>
+    <button class="close-btn" onclick="hideNotification()">✕</button>
+</div>
+
+<!-- ---------- دکمه هامبورگر و اوورلی ---------- -->
 <button id="hamburger" onclick="toggleSidebar()">☰</button>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
+<!-- ---------- اپلیکیشن ---------- -->
 <div id="app">
     <aside id="sidebar">
         <h1>🗺️ مدیریت مدارس</h1>
 
-        <!-- بخش آمار -->
+        <!-- آمار -->
         <div class="box">
             <h2>📊 آمار کلی</h2>
             <div class="stats-grid" id="statsContainer">
@@ -99,12 +458,12 @@
             <button class="info" onclick="loadStats()" style="width:100%;margin-top:6px">🔄 بروزرسانی آمار</button>
         </div>
 
-        <!-- بخش فیلترها -->
+        <!-- فیلترهای پیشرفته (همان‌ها) -->
         <div class="box">
             <h2>🔍 فیلترهای پیشرفته</h2>
             <div class="filter-group">
-                <label>جستجو در همه فیلدها</label>
-                <input id="searchInput" placeholder="نام، آدرس، شهر، ..." oninput="applyFilters()">
+                <label>جستجو در همه فیلدها (محدوده)</label>
+                <input id="searchInput" placeholder="نام، آدرس، شهر، ..." oninput="applyFilters()" />
             </div>
             <div class="filter-group">
                 <label>نوع مدرسه</label>
@@ -125,28 +484,24 @@
             <div class="field-row">
                 <div class="filter-group">
                     <label>حداقل امتیاز</label>
-                    <input type="number" id="filterMinScore" value="0" onchange="applyFilters()">
+                    <input type="number" id="filterMinScore" value="0" onchange="applyFilters()" />
                 </div>
                 <div class="filter-group">
                     <label>حداکثر امتیاز</label>
-                    <input type="number" id="filterMaxScore" value="999999" onchange="applyFilters()">
+                    <input type="number" id="filterMaxScore" value="999999" onchange="applyFilters()" />
                 </div>
             </div>
             <div class="field-row">
                 <div class="filter-group">
                     <label>خوابگاه</label>
                     <select id="filterDorm" onchange="applyFilters()">
-                        <option value="">همه</option>
-                        <option value="true">دارد</option>
-                        <option value="false">ندارد</option>
+                        <option value="">همه</option><option value="true">دارد</option><option value="false">ندارد</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label>کتابخانه</label>
                     <select id="filterLibrary" onchange="applyFilters()">
-                        <option value="">همه</option>
-                        <option value="true">دارد</option>
-                        <option value="false">ندارد</option>
+                        <option value="">همه</option><option value="true">دارد</option><option value="false">ندارد</option>
                     </select>
                 </div>
             </div>
@@ -154,17 +509,13 @@
                 <div class="filter-group">
                     <label>آزمایشگاه</label>
                     <select id="filterLab" onchange="applyFilters()">
-                        <option value="">همه</option>
-                        <option value="true">دارد</option>
-                        <option value="false">ندارد</option>
+                        <option value="">همه</option><option value="true">دارد</option><option value="false">ندارد</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label>کلاس هوشمند</label>
                     <select id="filterSmart" onchange="applyFilters()">
-                        <option value="">همه</option>
-                        <option value="true">دارد</option>
-                        <option value="false">ندارد</option>
+                        <option value="">همه</option><option value="true">دارد</option><option value="false">ندارد</option>
                     </select>
                 </div>
             </div>
@@ -177,10 +528,49 @@
             </div>
         </div>
 
-        <!-- بخش پیام‌ها -->
-        <div id="message"></div>
+        <!-- لیست همه مدارس با جستجوی سراسری و صفحه‌بندی -->
+        <div class="box">
+            <h2>📋 لیست همه مدارس</h2>
+            <div class="school-list-search">
+                <input id="globalSearchInput" placeholder="جستجوی سراسری در همه فیلدها..." oninput="loadAllSchools(1)" />
+                <button class="secondary" onclick="document.getElementById('globalSearchInput').value='';loadAllSchools(1)">✕</button>
+            </div>
+            <div id="schoolListContainer">
+                <div class="school-list-container" id="schoolListTableWrap">
+                    <table class="school-list-table" id="schoolListTable">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>نام</th>
+                            <th>شهر</th>
+                            <th>مقطع</th>
+                            <th>جنسیت</th>
+                            <th>وضعیت مختصات</th>
+                        </tr>
+                        </thead>
+                        <tbody id="schoolListBody">
+                        <tr><td colspan="6" class="muted" style="text-align:center;">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="paginationControls">
+                    <button class="secondary" onclick="changePage(-1)">قبلی</button>
+                    <span class="page-info" id="pageInfo">صفحه ۱ از ۱</span>
+                    <button class="secondary" onclick="changePage(1)">بعدی</button>
+                    <div class="per-page">
+                        <label>تعداد در صفحه</label>
+                        <select id="perPageSelect" onchange="loadAllSchools(1)">
+                            <option value="10">۱۰</option>
+                            <option value="20" selected>۲۰</option>
+                            <option value="50">۵۰</option>
+                            <option value="100">۱۰۰</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <!-- بخش مسیر -->
+        <!-- مسیر -->
         <div class="box">
             <h2>🚗 مسیر بازدید</h2>
             <div class="muted">روی مارکر کلیک کنید و «افزودن به مسیر» را بزنید.</div>
@@ -194,7 +584,7 @@
             <div id="routeList"></div>
         </div>
 
-        <!-- بخش اطلاعات مدرسه -->
+        <!-- اطلاعات مدرسه -->
         <div class="box">
             <h2>🏫 اطلاعات مدرسه</h2>
             <div style="display:flex; gap:5px; margin-bottom:8px;">
@@ -204,35 +594,64 @@
             <div id="editArea" class="muted">روی یک مارکر کلیک کنید یا برای ثبت جدید کلیک کنید.</div>
         </div>
     </aside>
+
     <main id="map"></main>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- ---------- اسکریپت‌ها ---------- -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
 <script>
     // ============================================================
     // مدیریت سایدبار
     // ============================================================
     let sidebarOpen = false;
-    function toggleSidebar(){
+
+    function toggleSidebar() {
         sidebarOpen = !sidebarOpen;
         document.getElementById('sidebar').classList.toggle('open', sidebarOpen);
         document.getElementById('sidebar-overlay').classList.toggle('open', sidebarOpen);
     }
-    function closeSidebar(){
-        if(window.innerWidth <= 768){
+
+    function closeSidebar() {
+        if (window.innerWidth <= 768) {
             sidebarOpen = false;
             document.getElementById('sidebar').classList.remove('open');
             document.getElementById('sidebar-overlay').classList.remove('open');
         }
     }
-    window.addEventListener('resize', ()=>{
-        if(window.innerWidth > 768){
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
             document.getElementById('sidebar').classList.add('open');
             document.getElementById('sidebar-overlay').classList.remove('open');
             sidebarOpen = true;
         }
     });
-    document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSidebar(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+    // ============================================================
+    // سیستم نوتیفیکیشن
+    // ============================================================
+    let notifTimer = null;
+
+    function showNotification(text, isError = false) {
+        const el = document.getElementById('notification');
+        const txt = document.getElementById('notification-text');
+        txt.textContent = text;
+        el.className = 'show' + (isError ? ' error' : '');
+        clearTimeout(notifTimer);
+        notifTimer = setTimeout(() => hideNotification(), 6000);
+    }
+
+    function hideNotification() {
+        document.getElementById('notification').classList.remove('show');
+        clearTimeout(notifTimer);
+    }
+
+    // جایگزین msg قبلی
+    function msg(text, isError = false) {
+        showNotification(text, isError);
+    }
 
     // ============================================================
     // متغیرهای اصلی
@@ -250,10 +669,10 @@
     let tempMarker = null;
     let isSelectingCoords = false;
 
-    const map = L.map('map', { zoomControl: true }).setView([36.214,58.81], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19,
-        attribution:'© OpenStreetMap'
+    const map = L.map('map', { zoomControl: true }).setView([36.214, 58.81], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
     }).addTo(map);
 
     const markerLayer = L.layerGroup().addTo(map);
@@ -283,22 +702,19 @@
             map.removeLayer(tempMarker);
             tempMarker = null;
         }
-        msg('');
+        hideNotification();
     }
 
-    // رویداد کلیک روی نقشه برای انتخاب مختصات
     map.on('click', function(e) {
         if (isSelectingCoords) {
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
-            if (tempMarker) {
-                map.removeLayer(tempMarker);
-            }
+            if (tempMarker) map.removeLayer(tempMarker);
             tempMarker = L.marker([lat, lng], {
                 icon: L.divIcon({
                     html: '<div style="background:green;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [20,20],
-                    iconAnchor: [10,10]
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
                 })
             }).addTo(map);
             const coordsInput = document.getElementById('e_coords');
@@ -325,7 +741,7 @@
             document.getElementById('geocodedCount').textContent = data.geocoded || 0;
             document.getElementById('withoutCoords').textContent = data.without_coords || 0;
             document.getElementById('visitedCount').textContent = schools.filter(s => s.visited).length || 0;
-        } catch(e) {
+        } catch (e) {
             console.error('خطا در دریافت آمار:', e);
         }
     }
@@ -338,7 +754,6 @@
             const response = await fetch('index.php?action=get_filter_fields');
             const data = await response.json();
             if (data.error) throw new Error(data.error);
-
             const fields = {
                 'filterSchoolType': data.school_type || [],
                 'filterSex': data.sex || [],
@@ -349,7 +764,6 @@
                 'filterLab': ['', 'true', 'false'],
                 'filterSmart': ['', 'true', 'false']
             };
-
             for (const [id, values] of Object.entries(fields)) {
                 const select = document.getElementById(id);
                 if (!select) continue;
@@ -362,19 +776,18 @@
                 }
                 if (currentVal) select.value = currentVal;
             }
-        } catch(e) {
+        } catch (e) {
             console.error('خطا در دریافت فیلترها:', e);
         }
     }
 
     // ============================================================
-    // بارگذاری مدارس از سرور
+    // بارگذاری مدارس از سرور (محدوده)
     // ============================================================
     async function loadFromServer() {
         try {
             const bounds = map.getBounds();
             const search = document.getElementById('searchInput').value.trim();
-
             const filters = {
                 school_type: document.getElementById('filterSchoolType').value,
                 sex: document.getElementById('filterSex').value,
@@ -387,7 +800,6 @@
                 lab: document.getElementById('filterLab').value,
                 smart_class: document.getElementById('filterSmart').value
             };
-
             const params = new URLSearchParams({
                 action: 'get_schools',
                 north: bounds.getNorth(),
@@ -397,26 +809,23 @@
                 search: search,
                 filters: JSON.stringify(filters)
             });
-
             const url = 'index.php?' + params.toString();
             const response = await fetch(url);
             if (!response.ok) throw new Error('خطا در دریافت داده');
             const data = await response.json();
             if (data.error) throw new Error(data.error);
-
             schools = data;
             normalizeSchools();
             applyLocalEdits();
             renderMarkers();
             updateStats();
             loadStats();
-
             if (data.length === 0) {
                 msg('⚠️ هیچ مدرسه‌ای در محدوده فعلی یافت نشد. محدوده را تغییر دهید یا فیلترها را پاک کنید.', true);
             } else {
                 msg(`✅ ${data.length} مدرسه در محدوده فعلی`);
             }
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا: ' + e.message, true);
             console.error(e);
         }
@@ -427,22 +836,22 @@
     loadFilterFields();
     loadStats();
 
-    // بارگذاری مجدد با حرکت نقشه (با debounce)
-    map.on('moveend', function(){
+    map.on('moveend', function() {
         clearTimeout(loadTimeout);
         loadTimeout = setTimeout(loadFromServer, 500);
     });
 
     // ============================================================
-    // توابع اصلی
+    // توابع اصلی مدارس
     // ============================================================
-    function normalizeSchools(){
-        schools = schools.map((s,i)=>{
+    function normalizeSchools() {
+        schools = schools.map((s, i) => {
             s.__index = i;
             s.lat = parseFloat(s.lat);
             s.lng = parseFloat(s.lng);
-            if (isNaN(s.lat) || isNaN(s.lng) || (s.lat===0 && s.lng===0)) {
-                s.lat = undefined; s.lng = undefined;
+            if (isNaN(s.lat) || isNaN(s.lng) || (s.lat === 0 && s.lng === 0)) {
+                s.lat = undefined;
+                s.lng = undefined;
             }
             s.visited = !!s.visited;
             s.notes = s.notes || '';
@@ -452,16 +861,16 @@
             s.follow_up = s.follow_up || '';
             s._geocoded = !!s._geocoded;
             s._coords_verified = !!s._coords_verified;
-            s._geocode_status = s._geocode_status || (s._coords_verified ? 'verified' : (s._geocoded ? 'pending' : 'none'));
+            s._geocode_status = s._geocode_status || (s._coords_verified ? 'verified' : (s._geocoded ? 'pending' :
+                'none'));
             return s;
         });
     }
 
-    function renderMarkers(){
+    function renderMarkers() {
         markerLayer.clearLayers();
         markers = [];
         displayedSchools = schools.filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-
         displayedSchools.forEach((s, idx) => {
             let color = '#1976d2';
             let label = '';
@@ -472,67 +881,63 @@
                 color = '#198754';
             }
             if (s.visited) label = '✓';
-
             const icon = L.divIcon({
                 html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:12px;color:white;font-weight:bold;line-height:1;">${label}</div>`,
-                iconSize: [24,24],
-                iconAnchor: [12,12],
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
                 className: (s._geocode_status === 'pending' && s._geocoded) ? 'geocoded-marker' : ''
             });
-
             const m = L.marker([s.lat, s.lng], { icon }).addTo(markerLayer);
-            m.on('click', ()=>openSchool(s.__index, m));
+            m.on('click', () => openSchool(s.__index, m));
             markers.push(m);
         });
         updateStats();
     }
 
-    function openSchool(i, m){
+    function openSchool(i, m) {
         currentSchoolIndex = i;
         const s = schools[i];
-        if(!s) return;
-
+        if (!s) return;
         let coordsInfo = '';
         if (s._geocode_status === 'pending' && s._geocoded) {
             coordsInfo = `
-            <div class="geocode-pending">
-                <div class="status">⚠️ این موقعیت بر اساس آدرس تخمین زده شده است</div>
-                <div class="coords-info">
-                    <span class="new-coords">📍 ${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</span>
-                    <button class="success" onclick="verifyCoords(${i})" style="padding:4px 10px;font-size:11px;margin:4px 0">✅ تایید مختصات</button>
+                <div class="geocode-pending">
+                    <div class="status">⚠️ این موقعیت بر اساس آدرس تخمین زده شده است</div>
+                    <div class="coords-info">
+                        <span class="new-coords">📍 ${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</span>
+                        <button class="success" onclick="verifyCoords(${i})" style="padding:4px 10px;font-size:11px;margin:4px 0">✅ تایید مختصات</button>
+                    </div>
+                    ${s._geocode_info?.display_name ? `<div style="font-size:10px;color:#666;">${esc(s._geocode_info.display_name)}</div>` : ''}
                 </div>
-                ${s._geocode_info?.display_name ? `<div style="font-size:10px;color:#666;">${esc(s._geocode_info.display_name)}</div>` : ''}
-            </div>
-        `;
+            `;
         } else if (s._coords_verified) {
             coordsInfo = `
-            <div style="background:#d1e7dd;padding:6px;border-radius:6px;margin:4px 0">
-                <span style="color:#198754;font-weight:bold;">✅ مختصات تایید شده</span>
-                <div style="font-size:11px;color:#666;">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</div>
-            </div>
-        `;
+                <div style="background:#d1e7dd;padding:6px;border-radius:6px;margin:4px 0">
+                    <span style="color:#198754;font-weight:bold;">✅ مختصات تایید شده</span>
+                    <div style="font-size:11px;color:#666;">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)}</div>
+                </div>
+            `;
         }
-
         const popup = `
-    <div class="school-popup">
-        <h3>🏫 ${esc(s.name || 'بدون نام')}</h3>
-        <table>
-            <tr><td>مقطع:</td><td>${esc(s.section || s.section_title || '')}</td></tr>
-            <tr><td>جنسیت:</td><td>${esc(s.sex || s.sex_title || '')}</td></tr>
-            <tr><td>نوع:</td><td>${esc(s.school_type || s.school_type_title || '')}</td></tr>
-            <tr><td>شهر:</td><td>${esc(s.city || s.city_title || '')}</td></tr>
-            <tr><td>آدرس:</td><td>${esc(s.address || '')}</td></tr>
-            <tr><td>تلفن:</td><td>${esc(s.phone1 || '')}</td></tr>
-            <tr><td>امتیاز:</td><td>${esc(s.score ?? '')}</td></tr>
-            <tr><td>بازدید:</td><td>${s.visited ? '✅ بله' : '❌ خیر'}</td></tr>
-        </table>
-        ${coordsInfo}
-        <hr>
-        <button onclick="addToRoute(${i})">➕ افزودن به مسیر</button>
-        <button class="success" onclick="editSchool(${i})">✏️ ویرایش</button>
-        <button class="secondary" onclick="markVisited(${i})">${s.visited ? '↩️ لغو' : '✅ ثبت بازدید'}</button>
-        ${(!s.lat || !s.lng) && s.address ? `<button class="warning" onclick="geocodeSingle(${i})" style="font-size:11px;padding:4px 8px;">🌍 تبدیل دقیق آدرس</button>` : ''}
-    </div>`;
+            <div class="school-popup">
+                <h3>🏫 ${esc(s.name || 'بدون نام')}</h3>
+                <table>
+                    <tr><td>مقطع:</td><td>${esc(s.section || s.section_title || '')}</td></tr>
+                    <tr><td>جنسیت:</td><td>${esc(s.sex || s.sex_title || '')}</td></tr>
+                    <tr><td>نوع:</td><td>${esc(s.school_type || s.school_type_title || '')}</td></tr>
+                    <tr><td>شهر:</td><td>${esc(s.city || s.city_title || '')}</td></tr>
+                    <tr><td>آدرس:</td><td>${esc(s.address || '')}</td></tr>
+                    <tr><td>تلفن:</td><td>${esc(s.phone1 || '')}</td></tr>
+                    <tr><td>امتیاز:</td><td>${esc(s.score ?? '')}</td></tr>
+                    <tr><td>بازدید:</td><td>${s.visited ? '✅ بله' : '❌ خیر'}</td></tr>
+                </table>
+                ${coordsInfo}
+                <hr>
+                <button onclick="addToRoute(${i})">➕ افزودن به مسیر</button>
+                <button class="success" onclick="editSchool(${i})">✏️ ویرایش</button>
+                <button class="secondary" onclick="markVisited(${i})">${s.visited ? '↩️ لغو' : '✅ ثبت بازدید'}</button>
+                ${(!s.lat || !s.lng) && s.address ? `<button class="warning" onclick="geocodeSingle(${i})" style="font-size:11px;padding:4px 8px;">🌍 تبدیل دقیق آدرس</button>` : ''}
+            </div>`;
         m.bindPopup(popup).openPopup();
         showEditForm(i);
     }
@@ -546,20 +951,16 @@
             msg('❌ این مدرسه آدرسی ندارد', true);
             return;
         }
-
         if (isGeocoding) {
             msg('⏳ در حال پردازش... لطفاً صبر کنید', true);
             return;
         }
-
         isGeocoding = true;
         msg('🌍 در حال تبدیل آدرس به مختصات...');
-
         try {
             const response = await fetch(`index.php?action=geocode_single&id=${s.id}`);
             const data = await response.json();
             if (data.error) throw new Error(data.error);
-
             const idx = schools.findIndex(sch => sch.id === data.id);
             if (idx !== -1) {
                 schools[idx] = data;
@@ -573,7 +974,7 @@
                 if (marker) marker.openPopup();
                 msg('✅ مختصات جدید پیدا شد. برای تایید، روی دکمه "تایید مختصات" کلیک کنید.');
             }
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا: ' + e.message, true);
         }
         isGeocoding = false;
@@ -593,14 +994,11 @@
             }
             return true;
         });
-
         if (missing.length === 0) {
             msg('✅ هیچ مدرسه‌ای بدون مختصات در محدوده‌ی فعلی وجود ندارد.');
             return;
         }
-
         if (!confirm(`آیا ${missing.length} مدرسه بدون مختصات در محدوده‌ی فعلی را تبدیل کنید؟`)) return;
-
         let successCount = 0;
         for (const s of missing) {
             try {
@@ -617,7 +1015,6 @@
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
-
         normalizeSchools();
         renderMarkers();
         updateStats();
@@ -626,17 +1023,15 @@
     }
 
     // ============================================================
-    // تبدیل همه مدارس بدون مختصات (اکشن جدید بک‌اند)
+    // تبدیل همه مدارس بدون مختصات (اکشن بک‌اند)
     // ============================================================
     async function geocodeAllSchools() {
         if (!confirm('آیا همه مدارس فاقد مختصات را تبدیل می‌کنید؟ این عمل ممکن است چند دقیقه طول بکشد.')) return;
-
         msg('⏳ در حال تبدیل همه مدارس... لطفاً صبر کنید.');
         try {
             const response = await fetch('index.php?action=geocode_all');
             const result = await response.json();
             if (result.error) throw new Error(result.error);
-
             let message = `✅ تبدیل کامل شد.\n`;
             message += `کل مدارس: ${result.total}\n`;
             message += `موفق: ${result.success}\n`;
@@ -644,15 +1039,13 @@
             message += `از قبل دارای مختصات: ${result.already_had_coords}\n`;
             if (result.errors && result.errors.length > 0) {
                 message += `\n❌ خطاها:\n`;
-                result.errors.forEach(e => {
-                    message += `- ${e.name}: ${e.reason}\n`;
-                });
+                result.errors.forEach(e => { message += `- ${e.name}: ${e.reason}\n`; });
             }
             alert(message);
             msg(`✅ ${result.success} مدرسه با موفقیت تبدیل شدند.`);
             loadFromServer();
             loadStats();
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا: ' + e.message, true);
         }
     }
@@ -663,18 +1056,13 @@
     async function verifyCoords(i) {
         const s = schools[i];
         if (!s) return;
-
         try {
             const formData = new FormData();
             formData.append('action', 'verify_coords');
             formData.append('id', s.id);
             formData.append('lat', s.lat);
             formData.append('lng', s.lng);
-
-            const response = await fetch('index.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('index.php', { method: 'POST', body: formData });
             const result = await response.json();
             if (result.success) {
                 s._coords_verified = true;
@@ -694,124 +1082,114 @@
             } else {
                 msg('❌ خطا در تایید: ' + (result.error || ''), true);
             }
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا: ' + e.message, true);
         }
     }
 
     // ============================================================
-    // نمایش فرم ویرایش مدرسه (با مختصات، دکمه پیست و انتخاب از نقشه)
+    // نمایش فرم ویرایش مدرسه
     // ============================================================
-    function showEditForm(i){
+    function showEditForm(i) {
         const s = schools[i];
-        if(!s) return;
+        if (!s) return;
         const coordsStr = (s.lat !== undefined && s.lat !== null && !isNaN(s.lat)) ? s.lat + ',' + s.lng : '';
-        // غیرفعال کردن حالت انتخاب مختصات اگر فعال است
         disableCoordinatePicker();
         document.getElementById('editArea').innerHTML = `
-        <label>نام مدرسه</label>
-        <input id="e_name" value="${attr(s.name || '')}" disabled style="background:#eee">
-
-        <label>مختصات (عرض,طول)</label>
-        <div style="display:flex;gap:5px;">
-            <input id="e_coords" value="${attr(coordsStr)}" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
-            <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
-            <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
-        </div>
-
-        <label>یادداشت بازدید</label>
-        <textarea id="e_notes">${esc(s.notes || '')}</textarea>
-
-        <div class="field-row">
-            <div><label>تاریخ بازدید</label><input id="e_visit_date" value="${attr(s.visit_date||'')}" placeholder="1405/06/10"></div>
-            <div><label>اولویت</label>
-                <select id="e_priority">
-                    <option value="">بدون</option>
-                    <option ${s.priority==='زیاد'?'selected':''}>زیاد</option>
-                    <option ${s.priority==='متوسط'?'selected':''}>متوسط</option>
-                    <option ${s.priority==='کم'?'selected':''}>کم</option>
-                </select>
+            <label>نام مدرسه</label>
+            <input id="e_name" value="${attr(s.name || '')}" disabled style="background:#eee">
+            <label>مختصات (عرض,طول)</label>
+            <div style="display:flex;gap:5px;">
+                <input id="e_coords" value="${attr(coordsStr)}" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
+                <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
+                <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
             </div>
-        </div>
-        <label>نتیجه تماس</label>
-        <input id="e_contact_result" value="${attr(s.contact_result||'')}" placeholder="مثلاً تماس گرفته شد">
-
-        <label>پیگیری بعدی</label>
-        <input id="e_follow_up" value="${attr(s.follow_up||'')}" placeholder="مثلاً هفته آینده">
-
-        <button class="success" onclick="saveSchool(${i})">💾 ذخیره در سرور</button>
-    `;
+            <label>یادداشت بازدید</label>
+            <textarea id="e_notes">${esc(s.notes || '')}</textarea>
+            <div class="field-row">
+                <div><label>تاریخ بازدید</label><input id="e_visit_date" value="${attr(s.visit_date||'')}" placeholder="1405/06/10"></div>
+                <div><label>اولویت</label>
+                    <select id="e_priority">
+                        <option value="">بدون</option>
+                        <option ${s.priority==='زیاد'?'selected':''}>زیاد</option>
+                        <option ${s.priority==='متوسط'?'selected':''}>متوسط</option>
+                        <option ${s.priority==='کم'?'selected':''}>کم</option>
+                    </select>
+                </div>
+            </div>
+            <label>نتیجه تماس</label>
+            <input id="e_contact_result" value="${attr(s.contact_result||'')}" placeholder="مثلاً تماس گرفته شد">
+            <label>پیگیری بعدی</label>
+            <input id="e_follow_up" value="${attr(s.follow_up||'')}" placeholder="مثلاً هفته آینده">
+            <button class="success" onclick="saveSchool(${i})">💾 ذخیره در سرور</button>
+        `;
     }
 
     // ============================================================
     // نمایش فرم ثبت مدرسه جدید
     // ============================================================
-    function showAddSchoolForm(){
+    function showAddSchoolForm() {
         disableCoordinatePicker();
         document.getElementById('editArea').innerHTML = `
-        <h3 style="margin-top:0;">➕ ثبت مدرسه جدید</h3>
-        <label>نام مدرسه *</label>
-        <input id="e_name" placeholder="نام مدرسه را وارد کنید">
-
-        <div class="field-row">
-            <div><label>نوع مدرسه</label>
-                <select id="e_school_type">
-                    <option value="">انتخاب</option>
-                    <option value="دولتی">دولتی</option>
-                    <option value="غیر انتفاعی">غیر انتفاعی</option>
-                    <option value="تیزهوشان">تیزهوشان</option>
-                    <option value="نمونه دولتی">نمونه دولتی</option>
-                    <option value="شاهد">شاهد</option>
-                </select>
+            <h3 style="margin-top:0;">➕ ثبت مدرسه جدید</h3>
+            <label>نام مدرسه *</label>
+            <input id="e_name" placeholder="نام مدرسه را وارد کنید">
+            <div class="field-row">
+                <div><label>نوع مدرسه</label>
+                    <select id="e_school_type">
+                        <option value="">انتخاب</option>
+                        <option value="دولتی">دولتی</option>
+                        <option value="غیر انتفاعی">غیر انتفاعی</option>
+                        <option value="تیزهوشان">تیزهوشان</option>
+                        <option value="نمونه دولتی">نمونه دولتی</option>
+                        <option value="شاهد">شاهد</option>
+                    </select>
+                </div>
+                <div><label>جنسیت</label>
+                    <select id="e_sex">
+                        <option value="">انتخاب</option>
+                        <option value="دخترانه">دخترانه</option>
+                        <option value="پسرانه">پسرانه</option>
+                    </select>
+                </div>
             </div>
-            <div><label>جنسیت</label>
-                <select id="e_sex">
-                    <option value="">انتخاب</option>
-                    <option value="دخترانه">دخترانه</option>
-                    <option value="پسرانه">پسرانه</option>
-                </select>
+            <div class="field-row">
+                <div><label>مقطع</label>
+                    <select id="e_section">
+                        <option value="">انتخاب</option>
+                        <option value="دبستان">دبستان</option>
+                        <option value="متوسطه اول">متوسطه اول</option>
+                        <option value="متوسطه دوم">متوسطه دوم</option>
+                        <option value="هنرستان">هنرستان</option>
+                    </select>
+                </div>
+                <div><label>شهر</label>
+                    <input id="e_city" placeholder="شهر">
+                </div>
             </div>
-        </div>
-        <div class="field-row">
-            <div><label>مقطع</label>
-                <select id="e_section">
-                    <option value="">انتخاب</option>
-                    <option value="دبستان">دبستان</option>
-                    <option value="متوسطه اول">متوسطه اول</option>
-                    <option value="متوسطه دوم">متوسطه دوم</option>
-                    <option value="هنرستان">هنرستان</option>
-                </select>
+            <label>آدرس</label>
+            <input id="e_address" placeholder="آدرس کامل">
+            <div class="field-row">
+                <div><label>تلفن</label>
+                    <input id="e_phone1" placeholder="تلفن">
+                </div>
+                <div><label>امتیاز (اختیاری)</label>
+                    <input id="e_score" type="number" value="0" step="0.1">
+                </div>
             </div>
-            <div><label>شهر</label>
-                <input id="e_city" placeholder="شهر">
+            <label>مختصات (عرض,طول)</label>
+            <div style="display:flex;gap:5px;">
+                <input id="e_coords" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
+                <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
+                <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
             </div>
-        </div>
-        <label>آدرس</label>
-        <input id="e_address" placeholder="آدرس کامل">
-
-        <div class="field-row">
-            <div><label>تلفن</label>
-                <input id="e_phone1" placeholder="تلفن">
-            </div>
-            <div><label>امتیاز (اختیاری)</label>
-                <input id="e_score" type="number" value="0" step="0.1">
-            </div>
-        </div>
-
-        <label>مختصات (عرض,طول)</label>
-        <div style="display:flex;gap:5px;">
-            <input id="e_coords" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
-            <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
-            <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
-        </div>
-
-        <button class="success" onclick="addSchool()" style="width:100%;margin-top:12px;">✅ ثبت مدرسه</button>
-    `;
+            <button class="success" onclick="addSchool()" style="width:100%;margin-top:12px;">✅ ثبت مدرسه</button>
+        `;
         msg('لطفاً اطلاعات مدرسه جدید را وارد کنید.');
     }
 
     // ============================================================
-    // تابع پیست مختصات (مشترک)
+    // پیست مختصات
     // ============================================================
     async function pasteCoords() {
         try {
@@ -849,8 +1227,8 @@
         const address = document.getElementById('e_address').value.trim();
         const phone1 = document.getElementById('e_phone1').value.trim();
         const score = parseFloat(document.getElementById('e_score').value) || 0;
-
-        let lat = null, lng = null;
+        let lat = null,
+            lng = null;
         const coordsRaw = document.getElementById('e_coords').value.trim();
         if (coordsRaw) {
             const parts = coordsRaw.split(/[,\s]+/).filter(p => p !== '');
@@ -866,29 +1244,12 @@
                 return;
             }
         }
-
-        const newSchool = {
-            name: name,
-            school_type: school_type,
-            sex: sex,
-            section: section,
-            city: city,
-            address: address,
-            phone1: phone1,
-            score: score,
-            lat: lat,
-            lng: lng
-        };
-
+        const newSchool = { name, school_type, sex, section, city, address, phone1, score, lat, lng };
         try {
             const formData = new FormData();
             formData.append('action', 'add_school');
             formData.append('school', JSON.stringify(newSchool));
-
-            const response = await fetch('index.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('index.php', { method: 'POST', body: formData });
             const result = await response.json();
             if (result.success) {
                 msg('✅ مدرسه جدید با موفقیت ثبت شد.');
@@ -898,7 +1259,7 @@
             } else {
                 msg('❌ خطا در ثبت: ' + (result.error || ''), true);
             }
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا در ارتباط با سرور: ' + e.message, true);
         }
     }
@@ -909,21 +1270,20 @@
     function clearEditForm() {
         document.getElementById('editArea').innerHTML = '<div class="muted">روی یک مارکر کلیک کنید یا برای ثبت جدید کلیک کنید.</div>';
         currentSchoolIndex = null;
-        msg('');
-        disableCoordinatePicker(); // غیرفعال کردن حالت انتخاب و حذف مارکر
+        hideNotification();
+        disableCoordinatePicker();
     }
 
     // ============================================================
     // ذخیره تغییرات مدرسه (ویرایش)
     // ============================================================
-    async function saveSchool(i){
+    async function saveSchool(i) {
         const s = schools[i];
         s.notes = document.getElementById('e_notes').value;
         s.visit_date = document.getElementById('e_visit_date').value;
         s.priority = document.getElementById('e_priority').value;
         s.contact_result = document.getElementById('e_contact_result').value;
         s.follow_up = document.getElementById('e_follow_up').value;
-
         const coordsRaw = document.getElementById('e_coords').value.trim();
         if (coordsRaw) {
             const parts = coordsRaw.split(/[,\s]+/).filter(p => p !== '');
@@ -948,9 +1308,7 @@
                 return;
             }
         }
-
         saveLocalEdit(s);
-
         try {
             const formData = new FormData();
             formData.append('action', 'save_school');
@@ -967,11 +1325,7 @@
                 _coords_verified: s._coords_verified,
                 _geocoded: s._geocoded
             }));
-
-            const response = await fetch('index.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('index.php', { method: 'POST', body: formData });
             const result = await response.json();
             if (result.success) {
                 msg('✅ اطلاعات در سرور ذخیره شد.');
@@ -985,7 +1339,7 @@
             } else {
                 msg('❌ خطا در ذخیره: ' + (result.error || ''), true);
             }
-        } catch(e) {
+        } catch (e) {
             msg('❌ خطا در ارتباط با سرور: ' + e.message, true);
         }
     }
@@ -993,7 +1347,7 @@
     // ============================================================
     // سایر توابع مدیریت مدرسه
     // ============================================================
-    function markVisited(i){
+    function markVisited(i) {
         schools[i].visited = !schools[i].visited;
         saveLocalEdit(schools[i]);
         const marker = markers.find(m => {
@@ -1001,19 +1355,19 @@
             const s = schools[i];
             return Math.abs(p.lat - s.lat) < 1e-9 && Math.abs(p.lng - s.lng) < 1e-9;
         });
-        if(marker) marker.openPopup();
+        if (marker) marker.openPopup();
         renderMarkers();
         updateStats();
         showEditForm(i);
         msg(schools[i].visited ? '✅ بازدید ثبت شد' : '↩️ بازدید لغو شد');
     }
 
-    function applyFilters(){
+    function applyFilters() {
         clearTimeout(loadTimeout);
         loadTimeout = setTimeout(loadFromServer, 400);
     }
 
-    function applyFiltersAndZoom(){
+    function applyFiltersAndZoom() {
         const search = document.getElementById('searchInput').value.trim();
         const filters = {
             school_type: document.getElementById('filterSchoolType').value,
@@ -1027,47 +1381,46 @@
             lab: document.getElementById('filterLab').value,
             smart_class: document.getElementById('filterSmart').value
         };
-
         let filtered = schools.filter(s => {
-            if(!Number.isFinite(s.lat)||!Number.isFinite(s.lng)) return false;
-            if(search && !JSON.stringify(s).toLowerCase().includes(search.toLowerCase())) return false;
-            if(filters.school_type && (s.school_type||s.school_type_title||'') !== filters.school_type) return false;
-            if(filters.sex && (s.sex||s.sex_title||'') !== filters.sex) return false;
-            if(filters.section && (s.section||s.section_title||'') !== filters.section) return false;
-            if(filters.city && (s.city||s.city_title||'') !== filters.city) return false;
-            if(s.score !== undefined && s.score !== null) {
+            if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return false;
+            if (search && !JSON.stringify(s).toLowerCase().includes(search.toLowerCase())) return false;
+            if (filters.school_type && (s.school_type || s.school_type_title || '') !== filters.school_type)
+                return false;
+            if (filters.sex && (s.sex || s.sex_title || '') !== filters.sex) return false;
+            if (filters.section && (s.section || s.section_title || '') !== filters.section) return false;
+            if (filters.city && (s.city || s.city_title || '') !== filters.city) return false;
+            if (s.score !== undefined && s.score !== null) {
                 const score = parseFloat(s.score);
-                if(score < filters.min_score || score > filters.max_score) return false;
+                if (score < filters.min_score || score > filters.max_score) return false;
             }
-            if(filters.dorm !== '') {
+            if (filters.dorm !== '') {
                 const dorm = s.dorm ? true : false;
-                if(dorm !== (filters.dorm === 'true')) return false;
+                if (dorm !== (filters.dorm === 'true')) return false;
             }
-            if(filters.library !== '') {
+            if (filters.library !== '') {
                 const lib = s.library ? true : false;
-                if(lib !== (filters.library === 'true')) return false;
+                if (lib !== (filters.library === 'true')) return false;
             }
-            if(filters.lab !== '') {
+            if (filters.lab !== '') {
                 const lab = s.lab ? true : false;
-                if(lab !== (filters.lab === 'true')) return false;
+                if (lab !== (filters.lab === 'true')) return false;
             }
-            if(filters.smart_class !== '') {
+            if (filters.smart_class !== '') {
                 const smart = s.smart_class ? true : false;
-                if(smart !== (filters.smart_class === 'true')) return false;
+                if (smart !== (filters.smart_class === 'true')) return false;
             }
             return true;
         });
-
-        if(filtered.length === 0){
+        if (filtered.length === 0) {
             msg('❌ هیچ مدرسه‌ای با این فیلترها پیدا نشد.', true);
             return;
         }
-        const bounds = L.latLngBounds(filtered.map(s=>[s.lat,s.lng]));
-        map.fitBounds(bounds, {padding:[30,30]});
+        const bounds = L.latLngBounds(filtered.map(s => [s.lat, s.lng]));
+        map.fitBounds(bounds, { padding: [30, 30] });
         msg(`🔍 ${filtered.length} مدرسه یافت شد.`);
     }
 
-    function resetFilters(){
+    function resetFilters() {
         document.getElementById('searchInput').value = '';
         document.getElementById('filterSchoolType').value = '';
         document.getElementById('filterSex').value = '';
@@ -1082,17 +1435,16 @@
         loadFromServer();
     }
 
-    function updateStats(){
+    function updateStats() {
         const total = schools.length;
-        let verified = 0, geocoded = 0, withoutCoords = 0;
+        let verified = 0,
+            geocoded = 0,
+            withoutCoords = 0;
         for (const s of schools) {
             const hasCoords = Number.isFinite(s.lat) && Number.isFinite(s.lng) && s.lat != 0 && s.lng != 0;
             if (hasCoords) {
-                if (s._coords_verified) {
-                    verified++;
-                } else if (s._geocoded) {
-                    geocoded++;
-                }
+                if (s._coords_verified) verified++;
+                else if (s._geocoded) geocoded++;
             } else {
                 withoutCoords++;
             }
@@ -1101,30 +1453,30 @@
         document.getElementById('verifiedCount').textContent = verified;
         document.getElementById('geocodedCount').textContent = geocoded;
         document.getElementById('withoutCoords').textContent = withoutCoords;
-        document.getElementById('visitedCount').textContent = schools.filter(s=>s.visited).length || 0;
+        document.getElementById('visitedCount').textContent = schools.filter(s => s.visited).length || 0;
     }
 
-    function msg(t, error=false){
-        const el = document.getElementById('message');
-        if (!el) {
-            console.warn('عنصر پیام وجود ندارد:', t);
-            return;
-        }
-        el.textContent = t;
-        el.style.background = error ? '#ffecec' : '#eef5ff';
-    }
+    function esc(v) { return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 
-    function esc(v){ return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-    function attr(v){ return esc(v).replace(/\n/g,' '); }
+    function attr(v) { return esc(v).replace(/\n/g, ' '); }
 
     // ============================================================
     // مدیریت مسیر
     // ============================================================
-    function addToRoute(i){ if(!selectedRoute.includes(i)){ selectedRoute.push(i); updateRouteList(); updateStats(); } }
-    function removeFromRoute(i){ selectedRoute = selectedRoute.filter(x=>x!==i); updateRouteList(); updateStats(); }
-    function updateRouteList(){
+    function addToRoute(i) { if (!selectedRoute.includes(i)) { selectedRoute.push(i);
+        updateRouteList();
+        updateStats(); } }
+
+    function removeFromRoute(i) { selectedRoute = selectedRoute.filter(x => x !== i);
+        updateRouteList();
+        updateStats(); }
+
+    function updateRouteList() {
         document.getElementById('routeList').innerHTML = selectedRoute.length ?
-            selectedRoute.map((i,n)=>`<div class="route-item">${n+1}. ${esc(schools[i]?.name||'')} <button class="danger" style="float:left;padding:4px 7px" onclick="removeFromRoute(${i})">×</button></div>`).join('') :
+            selectedRoute.map((i, n) =>
+                `<div class="route-item">${n+1}. ${esc(schools[i]?.name||'')} <button class="danger" style="float:left;padding:4px 7px" onclick="removeFromRoute(${i})">×</button></div>`
+            ).join('') :
             '<div class="muted">هیچ مدرسه‌ای انتخاب نشده.</div>';
     }
 
@@ -1133,18 +1485,15 @@
             msg('حداقل دو مدرسه برای مسیر‌یابی انتخاب کنید.', true);
             return;
         }
-
         let points = selectedRoute.map(i => {
             const s = schools[i];
             if (!s || !Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return null;
             return { lat: s.lat, lng: s.lng, index: i };
         }).filter(p => p !== null);
-
         if (points.length < 2) {
             msg('برخی مدارس مختصات معتبر ندارند.', true);
             return;
         }
-
         const startMode = document.getElementById('startMode').value;
         let startIndex = 0;
         if (startMode === 'mapcenter') {
@@ -1152,97 +1501,173 @@
             let minDist = Infinity;
             points.forEach((p, idx) => {
                 const d = map.distance([center.lat, center.lng], [p.lat, p.lng]);
-                if (d < minDist) { minDist = d; startIndex = idx; }
+                if (d < minDist) { minDist = d;
+                    startIndex = idx; }
             });
         }
-
         const ordered = [];
         const remaining = [...points];
         let current = remaining.splice(startIndex, 1)[0];
         ordered.push(current);
-
         while (remaining.length > 0) {
-            let minDist = Infinity;
-            let minIdx = 0;
+            let minDist = Infinity,
+                minIdx = 0;
             remaining.forEach((p, idx) => {
                 const d = map.distance([current.lat, current.lng], [p.lat, p.lng]);
-                if (d < minDist) { minDist = d; minIdx = idx; }
+                if (d < minDist) { minDist = d;
+                    minIdx = idx; }
             });
             current = remaining.splice(minIdx, 1)[0];
             ordered.push(current);
         }
-
         routeLayer.clearLayers();
-        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-
+        if (routeLine) { map.removeLayer(routeLine);
+            routeLine = null; }
         const latlngs = ordered.map(p => [p.lat, p.lng]);
         routeLine = L.polyline(latlngs, { color: '#d98c00', weight: 4, opacity: 0.8 }).addTo(map);
         routeLayer.addLayer(routeLine);
         map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
-
         const routeList = document.getElementById('routeList');
         routeList.innerHTML = ordered.map((p, idx) =>
             `<div class="route-item">${idx+1}. ${esc(schools[p.index]?.name || '')}</div>`
         ).join('');
-
         msg(`✅ مسیر بهینه با ${ordered.length} نقطه ساخته شد.`);
     }
 
     function clearRoute() {
         selectedRoute = [];
         routeLayer.clearLayers();
-        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+        if (routeLine) { map.removeLayer(routeLine);
+            routeLine = null; }
         updateRouteList();
         updateStats();
         msg('مسیر پاک شد.');
     }
 
     // ============================================================
-    // توابع کمکی
+    // ذخیره محلی
     // ============================================================
-    function saveLocalEdit(s){
-        try{
-            const edits = JSON.parse(localStorage.getItem('schoolMapEdits')||'{}');
-            const copy = {...s}; delete copy.__index;
-            edits[s.id||s.code||s.name] = copy;
+    function saveLocalEdit(s) {
+        try {
+            const edits = JSON.parse(localStorage.getItem('schoolMapEdits') || '{}');
+            const copy = { ...s };
+            delete copy.__index;
+            edits[s.id || s.code || s.name] = copy;
             localStorage.setItem('schoolMapEdits', JSON.stringify(edits));
-        }catch(e){}
+        } catch (e) {}
     }
-    function applyLocalEdits(){
-        try{
-            const edits = JSON.parse(localStorage.getItem('schoolMapEdits')||'{}');
-            schools.forEach(s=>{ if(edits[s.id]!=null) Object.assign(s, edits[s.id]); });
-        }catch(e){}
-    }
-    function resetEdits(){
-        if(confirm('تغییرات محلی پاک شود؟')){
-            localStorage.removeItem('schoolMapEdits');
-            schools.forEach(s=>{ s.visited=false; s.notes=''; s.visit_date=''; s.contact_result=''; s.priority=''; s.follow_up=''; });
-            renderMarkers(); updateStats(); msg('تغییرات محلی پاک شد.');
-        }
-    }
-    function downloadJSON(){
-        if(!schools.length){ alert('داده‌ای وجود ندارد'); return; }
-        const clean = schools.map(s=>{ const x={...s}; delete x.__index; return x; });
-        const blob = new Blob([JSON.stringify(clean,null,2)], {type:'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'schools-updated.json'; a.click(); URL.revokeObjectURL(a.href);
+
+    function applyLocalEdits() {
+        try {
+            const edits = JSON.parse(localStorage.getItem('schoolMapEdits') || '{}');
+            schools.forEach(s => { if (edits[s.id] != null) Object.assign(s, edits[s.id]); });
+        } catch (e) {}
     }
 
     // ============================================================
-    // نمونه داده (برای تست)
+    // لیست همه مدارس با جستجوی سراسری و صفحه‌بندی (اکشن جدید)
     // ============================================================
-    function loadDemo(){
-        schools = [
-            {id:93891,name:'فرزانگان',sex:'دخترانه',school_type:'تیزهوشان',section:'متوسطه اول',city:'نیشابور',address:'بلوار غزالی، جنب خانه معلم',phone1:'5142617390',lat:36.223194,lng:58.810620,score:4234,notes:'',visit_date:'',contact_result:'',priority:'',follow_up:'',visited:false,_geocode_status:'verified',_coords_verified:true},
-            {id:2,name:'مدرسه نمونه ۲',sex:'پسرانه',school_type:'دولتی',section:'دبستان',city:'نیشابور',address:'بلوار آزادی',lat:36.22408,lng:58.81187,score:1600,notes:'',visit_date:'',contact_result:'',priority:'',follow_up:'',visited:false},
-            {id:3,name:'مدرسه بدون مختصات',sex:'دخترانه',school_type:'غیر انتفاعی',section:'متوسطه اول',city:'نیشابور',address:'خیابان شهید رجایی',score:1500,notes:'',visit_date:'',contact_result:'',priority:'',follow_up:'',visited:false}
-        ];
-        normalizeSchools(); loadFilterFields(); fitSchools(); renderMarkers(); updateStats(); loadStats(); msg('نمونه محلی بارگذاری شد.');
+    let allSchoolsData = [];
+    let currentPage = 1;
+    let perPage = 20;
+    let totalAllSchools = 0;
+
+    async function loadAllSchools(page = 1) {
+        const search = document.getElementById('globalSearchInput').value.trim();
+        perPage = parseInt(document.getElementById('perPageSelect').value) || 20;
+        currentPage = Math.max(1, page);
+
+        try {
+            const params = new URLSearchParams({
+                action: 'get_all_schools',
+                search: search,
+                page: currentPage,
+                per_page: perPage
+            });
+            const response = await fetch('index.php?' + params.toString());
+            if (!response.ok) throw new Error('خطا در دریافت لیست مدارس');
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            allSchoolsData = data.data || [];
+            totalAllSchools = data.total || 0;
+            renderSchoolList(allSchoolsData, currentPage, totalAllSchools, perPage);
+        } catch (e) {
+            msg('❌ خطا در بارگذاری لیست مدارس: ' + e.message, true);
+            console.error(e);
+        }
     }
-    function fitSchools(){
-        const pts = schools.filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));
-        if(!pts.length)return;
-        map.fitBounds(L.latLngBounds(pts.map(s=>[s.lat,s.lng])),{padding:[30,30]});
+
+    function renderSchoolList(items, page, total, perPage) {
+        const tbody = document.getElementById('schoolListBody');
+        if (!items.length) {
+            tbody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center;">هیچ مدرسه‌ای یافت نشد.</td></tr>`;
+        } else {
+            const start = (page - 1) * perPage;
+            tbody.innerHTML = items.map((s, idx) => {
+                let statusHtml = '';
+                if (s._coords_verified) statusHtml = '<span class="badge badge-verified">تایید شده</span>';
+                else if (s._geocoded) statusHtml = '<span class="badge badge-pending">تقریبی</span>';
+                else statusHtml = '<span class="badge badge-none">بدون مختصات</span>';
+                return `<tr>
+                        <td>${start + idx + 1}</td>
+                        <td>${esc(s.name || '')}</td>
+                        <td>${esc(s.city || s.city_title || '')}</td>
+                        <td>${esc(s.section || s.section_title || '')}</td>
+                        <td>${esc(s.sex || s.sex_title || '')}</td>
+                        <td>${statusHtml}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // صفحه‌بندی
+        const totalPages = Math.ceil(total / perPage) || 1;
+        document.getElementById('pageInfo').textContent = `صفحه ${page} از ${totalPages} (${total} مدرسه)`;
+        document.querySelectorAll('#paginationControls button').forEach(btn => {
+            if (btn.textContent === 'قبلی') btn.disabled = (page <= 1);
+            if (btn.textContent === 'بعدی') btn.disabled = (page >= totalPages);
+        });
+    }
+
+    function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage < 1) return;
+        loadAllSchools(newPage);
+    }
+
+    // بارگذاری اولیه لیست همه مدارس
+    loadAllSchools(1);
+
+    // ============================================================
+    // سایر
+    // ============================================================
+    function fitSchools() {
+        const pts = schools.filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+        if (!pts.length) return;
+        map.fitBounds(L.latLngBounds(pts.map(s => [s.lat, s.lng])), { padding: [30, 30] });
+    }
+
+    // نمونه داده (برای تست)
+    function loadDemo() {
+        schools = [
+            { id: 93891, name: 'فرزانگان', sex: 'دخترانه', school_type: 'تیزهوشان', section: 'متوسطه اول',
+                city: 'نیشابور', address: 'بلوار غزالی، جنب خانه معلم', phone1: '5142617390', lat: 36.223194,
+                lng: 58.810620, score: 4234, notes: '', visit_date: '', contact_result: '', priority: '',
+                follow_up: '', visited: false, _geocode_status: 'verified', _coords_verified: true },
+            { id: 2, name: 'مدرسه نمونه ۲', sex: 'پسرانه', school_type: 'دولتی', section: 'دبستان', city: 'نیشابور',
+                address: 'بلوار آزادی', lat: 36.22408, lng: 58.81187, score: 1600, notes: '', visit_date: '',
+                contact_result: '', priority: '', follow_up: '', visited: false },
+            { id: 3, name: 'مدرسه بدون مختصات', sex: 'دخترانه', school_type: 'غیر انتفاعی', section: 'متوسطه اول',
+                city: 'نیشابور', address: 'خیابان شهید رجایی', score: 1500, notes: '', visit_date: '',
+                contact_result: '', priority: '', follow_up: '', visited: false }
+        ];
+        normalizeSchools();
+        loadFilterFields();
+        fitSchools();
+        renderMarkers();
+        updateStats();
+        loadStats();
+        msg('نمونه محلی بارگذاری شد.');
     }
 
     // ============================================================
