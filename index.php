@@ -592,7 +592,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // =============================================================
-// اکشن ۹: دریافت لیست همه مدارس با جستجوی سراسری و صفحه‌بندی
+// اکشن ۹: دریافت لیست همه مدارس با جستجوی سراسری و صفحه‌بندی + فیلترهای پیشرفته
 // =============================================================
 if (isset($_GET['action']) && $_GET['action'] === 'get_all_schools') {
     header('Content-Type: application/json; charset=utf-8');
@@ -613,21 +613,77 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_all_schools') {
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
     $perPage = isset($_GET['per_page']) ? intval($_GET['per_page']) : 20;
+    $filters = isset($_GET['filters']) ? json_decode($_GET['filters'], true) : [];
 
     if ($page < 1) $page = 1;
     if ($perPage < 1) $perPage = 20;
 
-    // فیلتر بر اساس جستجوی سراسری
-    $filtered = $schools;
-    if (!empty($search)) {
-        $filtered = array_filter($schools, function($s) use ($search) {
-            $text = json_encode($s, JSON_UNESCAPED_UNICODE);
-            return stripos($text, $search) !== false;
-        });
-        // بازآرایی ایندکس‌ها
-        $filtered = array_values($filtered);
-    }
+    // فیلترهای پیشرفته
+    $school_type = $filters['school_type'] ?? '';
+    $sex = $filters['sex'] ?? '';
+    $section = $filters['section'] ?? '';
+    $city = $filters['city'] ?? '';
+    $min_score = isset($filters['min_score']) ? floatval($filters['min_score']) : 0;
+    $max_score = isset($filters['max_score']) ? floatval($filters['max_score']) : 999999;
+    $has_dorm = isset($filters['dorm']) ? ($filters['dorm'] === 'true') : null;
+    $has_library = isset($filters['library']) ? ($filters['library'] === 'true') : null;
+    $has_lab = isset($filters['lab']) ? ($filters['lab'] === 'true') : null;
+    $has_smart = isset($filters['smart_class']) ? ($filters['smart_class'] === 'true') : null;
 
+    // اعمال فیلترها
+    $filtered = array_filter($schools, function($s) use (
+        $search, $school_type, $sex, $section, $city, $min_score, $max_score,
+        $has_dorm, $has_library, $has_lab, $has_smart
+    ) {
+        // جستجوی سراسری
+        if (!empty($search)) {
+            $text = json_encode($s, JSON_UNESCAPED_UNICODE);
+            if (stripos($text, $search) === false) return false;
+        }
+
+        // فیلترهای پیشرفته
+        if (!empty($school_type)) {
+            $st = $s['school_type'] ?? $s['school_type_title'] ?? '';
+            if ($st !== $school_type) return false;
+        }
+        if (!empty($sex)) {
+            $sx = $s['sex'] ?? $s['sex_title'] ?? '';
+            if ($sx !== $sex) return false;
+        }
+        if (!empty($section)) {
+            $sec = $s['section'] ?? $s['section_title'] ?? '';
+            if ($sec !== $section) return false;
+        }
+        if (!empty($city)) {
+            $ct = $s['city'] ?? $s['city_title'] ?? '';
+            if ($ct !== $city) return false;
+        }
+        if (isset($s['score']) && is_numeric($s['score'])) {
+            $score = floatval($s['score']);
+            if ($score < $min_score || $score > $max_score) return false;
+        }
+        if ($has_dorm !== null) {
+            $dorm = isset($s['dorm']) ? (bool)$s['dorm'] : false;
+            if ($dorm !== $has_dorm) return false;
+        }
+        if ($has_library !== null) {
+            $lib = isset($s['library']) ? (bool)$s['library'] : false;
+            if ($lib !== $has_library) return false;
+        }
+        if ($has_lab !== null) {
+            $lab = isset($s['lab']) ? (bool)$s['lab'] : false;
+            if ($lab !== $has_lab) return false;
+        }
+        if ($has_smart !== null) {
+            $smart = isset($s['smart_class']) ? (bool)$s['smart_class'] : false;
+            if ($smart !== $has_smart) return false;
+        }
+
+        return true;
+    });
+
+    // بازآرایی ایندکس‌ها
+    $filtered = array_values($filtered);
     $total = count($filtered);
     $offset = ($page - 1) * $perPage;
     $pagedData = array_slice($filtered, $offset, $perPage);
