@@ -357,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // =============================================================
-// اکشن ۶: ذخیره تغییرات مدرسه (POST)
+// اکشن ۶: ذخیره تغییرات مدرسه (POST) - ویرایش شده برای پذیرش مختصات
 // =============================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_school') {
     header('Content-Type: application/json; charset=utf-8');
@@ -383,12 +383,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $found = false;
     foreach ($schools as &$s) {
         if (isset($s['id']) && $s['id'] == $schoolData['id']) {
+            // فیلدهای مجاز برای ویرایش
             $allowed = ['notes', 'visit_date', 'contact_result', 'priority', 'follow_up', 'visited'];
             foreach ($allowed as $field) {
                 if (array_key_exists($field, $schoolData)) {
                     $s[$field] = $schoolData[$field];
                 }
             }
+
+            // پردازش مختصات اگر ارسال شده باشند
+            if (isset($schoolData['lat']) && isset($schoolData['lng'])) {
+                $lat = floatval($schoolData['lat']);
+                $lng = floatval($schoolData['lng']);
+                if (!is_numeric($lat) || !is_numeric($lng) || $lat == 0 || $lng == 0) {
+                    echo json_encode(['success' => false, 'error' => 'مختصات نامعتبر']);
+                    exit;
+                }
+                $s['lat'] = $lat;
+                $s['lng'] = $lng;
+                $s['_coords_verified'] = true;
+                $s['_geocoded'] = false;
+                // حذف اطلاعات قبلی جیوکدینگ
+                unset($s['_geocoded_lat'], $s['_geocoded_lng'], $s['_geocode_info']);
+                $s['_geocode_status'] = 'verified';
+            }
+
             $found = true;
             break;
         }
@@ -488,6 +507,87 @@ if (isset($_GET['action']) && $_GET['action'] === 'geocode_all') {
         'already_had_coords' => $already_had_coords,
         'errors' => $errors
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// =============================================================
+// اکشن ۸: ثبت مدرسه جدید (POST)
+// =============================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_school') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $schoolData = json_decode($_POST['school'] ?? '', true);
+    if (!$schoolData) {
+        echo json_encode(['success' => false, 'error' => 'داده نامعتبر']);
+        exit;
+    }
+
+    // اعتبارسنجی حداقل فیلدها
+    if (empty($schoolData['name'])) {
+        echo json_encode(['success' => false, 'error' => 'نام مدرسه الزامی است']);
+        exit;
+    }
+
+    if (!file_exists($dataFile)) {
+        echo json_encode(['success' => false, 'error' => 'فایل data.json یافت نشد']);
+        exit;
+    }
+
+    $json = file_get_contents($dataFile);
+    $schools = json_decode($json, true);
+    if (!is_array($schools)) {
+        echo json_encode(['success' => false, 'error' => 'فرمت داده نامعتبر']);
+        exit;
+    }
+
+    // تولید id جدید (بزرگترین id + 1)
+    $maxId = 0;
+    foreach ($schools as $s) {
+        if (isset($s['id']) && $s['id'] > $maxId) {
+            $maxId = $s['id'];
+        }
+    }
+    $newId = $maxId + 1;
+
+    // فیلدهای پیش‌فرض
+    $newSchool = [
+        'id' => $newId,
+        'name' => $schoolData['name'] ?? '',
+        'school_type' => $schoolData['school_type'] ?? '',
+        'sex' => $schoolData['sex'] ?? '',
+        'section' => $schoolData['section'] ?? '',
+        'city' => $schoolData['city'] ?? '',
+        'address' => $schoolData['address'] ?? '',
+        'phone1' => $schoolData['phone1'] ?? '',
+        'score' => isset($schoolData['score']) ? floatval($schoolData['score']) : 0,
+        'lat' => isset($schoolData['lat']) ? floatval($schoolData['lat']) : null,
+        'lng' => isset($schoolData['lng']) ? floatval($schoolData['lng']) : null,
+        'notes' => '',
+        'visit_date' => '',
+        'contact_result' => '',
+        'priority' => '',
+        'follow_up' => '',
+        'visited' => false,
+        '_geocoded' => false,
+        '_coords_verified' => false,
+        '_geocode_status' => 'none'
+    ];
+
+    // اگر مختصات وارد شده باشد، وضعیت verified می‌شود
+    if (!empty($newSchool['lat']) && !empty($newSchool['lng']) && is_numeric($newSchool['lat']) && is_numeric($newSchool['lng']) && $newSchool['lat'] != 0 && $newSchool['lng'] != 0) {
+        $newSchool['_coords_verified'] = true;
+        $newSchool['_geocode_status'] = 'verified';
+    }
+
+    // اضافه کردن به آرایه
+    $schools[] = $newSchool;
+
+    // ذخیره فایل
+    if (file_put_contents($dataFile, json_encode($schools, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) {
+        echo json_encode(['success' => true, 'school' => $newSchool]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'خطا در ذخیره فایل']);
+    }
     exit;
 }
 

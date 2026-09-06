@@ -49,7 +49,7 @@
         .field-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
         .route-item{padding:8px;border-bottom:1px solid #eee;font-size:13px}
         .muted{color:#777;font-size:12px}
-        #message{padding:8px;border-radius:8px;background:#eef5ff;margin-top:8px;font-size:12px}
+        #message{padding:8px;border-radius:8px;background:#eef5ff;margin-top:8px;font-size:12px;min-height:38px}
         .leaflet-popup-content-wrapper{border-radius:12px}
         .route-badge{background:#1976d2;color:#fff;border-radius:50%;width:28px;height:28px;line-height:28px;text-align:center;font-weight:bold;border:2px solid white;box-shadow:0 1px 5px #0005}
         .filter-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
@@ -177,6 +177,9 @@
             </div>
         </div>
 
+        <!-- بخش پیام‌ها -->
+        <div id="message"></div>
+
         <!-- بخش مسیر -->
         <div class="box">
             <h2>🚗 مسیر بازدید</h2>
@@ -194,7 +197,11 @@
         <!-- بخش اطلاعات مدرسه -->
         <div class="box">
             <h2>🏫 اطلاعات مدرسه</h2>
-            <div id="editArea" class="muted">روی یک مارکر کلیک کنید.</div>
+            <div style="display:flex; gap:5px; margin-bottom:8px;">
+                <button class="success" onclick="showAddSchoolForm()" style="flex:1;">➕ ثبت مدرسه جدید</button>
+                <button class="secondary" onclick="clearEditForm()" style="flex:1;">✖️ بستن فرم</button>
+            </div>
+            <div id="editArea" class="muted">روی یک مارکر کلیک کنید یا برای ثبت جدید کلیک کنید.</div>
         </div>
     </aside>
     <main id="map"></main>
@@ -239,6 +246,10 @@
     let loadTimeout = null;
     let isGeocoding = false;
 
+    // متغیرهای انتخاب مختصات از نقشه
+    let tempMarker = null;
+    let isSelectingCoords = false;
+
     const map = L.map('map', { zoomControl: true }).setView([36.214,58.81], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
         maxZoom:19,
@@ -247,6 +258,59 @@
 
     const markerLayer = L.layerGroup().addTo(map);
     const routeLayer = L.layerGroup().addTo(map);
+
+    // ============================================================
+    // انتخاب مختصات از نقشه
+    // ============================================================
+    function enableCoordinatePicker() {
+        if (isSelectingCoords) {
+            disableCoordinatePicker();
+            return;
+        }
+        isSelectingCoords = true;
+        msg('📍 روی نقشه کلیک کنید تا مختصات را انتخاب کنید. برای لغو دوباره کلیک کنید.');
+        map.getContainer().style.cursor = 'crosshair';
+        if (tempMarker) {
+            map.removeLayer(tempMarker);
+            tempMarker = null;
+        }
+    }
+
+    function disableCoordinatePicker() {
+        isSelectingCoords = false;
+        map.getContainer().style.cursor = '';
+        if (tempMarker) {
+            map.removeLayer(tempMarker);
+            tempMarker = null;
+        }
+        msg('');
+    }
+
+    // رویداد کلیک روی نقشه برای انتخاب مختصات
+    map.on('click', function(e) {
+        if (isSelectingCoords) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+            }
+            tempMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    html: '<div style="background:green;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [20,20],
+                    iconAnchor: [10,10]
+                })
+            }).addTo(map);
+            const coordsInput = document.getElementById('e_coords');
+            if (coordsInput) {
+                coordsInput.value = lat + ',' + lng;
+                msg('✅ مختصات انتخاب شد: ' + lat.toFixed(6) + ',' + lng.toFixed(6));
+            } else {
+                msg('❌ فیلد مختصات یافت نشد.', true);
+            }
+            disableCoordinatePicker();
+        }
+    });
 
     // ============================================================
     // بارگذاری آمار
@@ -344,8 +408,8 @@
             normalizeSchools();
             applyLocalEdits();
             renderMarkers();
-            updateStats();      // آمار را از داده‌های محلی به‌روز می‌کند
-            loadStats();        // آمار را از سرور می‌گیرد (برای اعداد کلی)
+            updateStats();
+            loadStats();
 
             if (data.length === 0) {
                 msg('⚠️ هیچ مدرسه‌ای در محدوده فعلی یافت نشد. محدوده را تغییر دهید یا فیلترها را پاک کنید.', true);
@@ -586,7 +650,6 @@
             }
             alert(message);
             msg(`✅ ${result.success} مدرسه با موفقیت تبدیل شدند.`);
-            // بارگذاری مجدد داده‌ها
             loadFromServer();
             loadStats();
         } catch(e) {
@@ -637,14 +700,24 @@
     }
 
     // ============================================================
-    // سایر توابع مدیریت مدرسه
+    // نمایش فرم ویرایش مدرسه (با مختصات، دکمه پیست و انتخاب از نقشه)
     // ============================================================
     function showEditForm(i){
         const s = schools[i];
         if(!s) return;
+        const coordsStr = (s.lat !== undefined && s.lat !== null && !isNaN(s.lat)) ? s.lat + ',' + s.lng : '';
+        // غیرفعال کردن حالت انتخاب مختصات اگر فعال است
+        disableCoordinatePicker();
         document.getElementById('editArea').innerHTML = `
         <label>نام مدرسه</label>
         <input id="e_name" value="${attr(s.name || '')}" disabled style="background:#eee">
+
+        <label>مختصات (عرض,طول)</label>
+        <div style="display:flex;gap:5px;">
+            <input id="e_coords" value="${attr(coordsStr)}" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
+            <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
+            <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
+        </div>
 
         <label>یادداشت بازدید</label>
         <textarea id="e_notes">${esc(s.notes || '')}</textarea>
@@ -670,6 +743,179 @@
     `;
     }
 
+    // ============================================================
+    // نمایش فرم ثبت مدرسه جدید
+    // ============================================================
+    function showAddSchoolForm(){
+        disableCoordinatePicker();
+        document.getElementById('editArea').innerHTML = `
+        <h3 style="margin-top:0;">➕ ثبت مدرسه جدید</h3>
+        <label>نام مدرسه *</label>
+        <input id="e_name" placeholder="نام مدرسه را وارد کنید">
+
+        <div class="field-row">
+            <div><label>نوع مدرسه</label>
+                <select id="e_school_type">
+                    <option value="">انتخاب</option>
+                    <option value="دولتی">دولتی</option>
+                    <option value="غیر انتفاعی">غیر انتفاعی</option>
+                    <option value="تیزهوشان">تیزهوشان</option>
+                    <option value="نمونه دولتی">نمونه دولتی</option>
+                    <option value="شاهد">شاهد</option>
+                </select>
+            </div>
+            <div><label>جنسیت</label>
+                <select id="e_sex">
+                    <option value="">انتخاب</option>
+                    <option value="دخترانه">دخترانه</option>
+                    <option value="پسرانه">پسرانه</option>
+                </select>
+            </div>
+        </div>
+        <div class="field-row">
+            <div><label>مقطع</label>
+                <select id="e_section">
+                    <option value="">انتخاب</option>
+                    <option value="دبستان">دبستان</option>
+                    <option value="متوسطه اول">متوسطه اول</option>
+                    <option value="متوسطه دوم">متوسطه دوم</option>
+                    <option value="هنرستان">هنرستان</option>
+                </select>
+            </div>
+            <div><label>شهر</label>
+                <input id="e_city" placeholder="شهر">
+            </div>
+        </div>
+        <label>آدرس</label>
+        <input id="e_address" placeholder="آدرس کامل">
+
+        <div class="field-row">
+            <div><label>تلفن</label>
+                <input id="e_phone1" placeholder="تلفن">
+            </div>
+            <div><label>امتیاز (اختیاری)</label>
+                <input id="e_score" type="number" value="0" step="0.1">
+            </div>
+        </div>
+
+        <label>مختصات (عرض,طول)</label>
+        <div style="display:flex;gap:5px;">
+            <input id="e_coords" placeholder="مثلاً 36.2008,58.7934" style="flex:1">
+            <button onclick="pasteCoords()" style="padding:9px 12px; white-space:nowrap;">📋 پیست</button>
+            <button onclick="enableCoordinatePicker()" style="padding:9px 12px; white-space:nowrap; background:#198754;">📍 انتخاب</button>
+        </div>
+
+        <button class="success" onclick="addSchool()" style="width:100%;margin-top:12px;">✅ ثبت مدرسه</button>
+    `;
+        msg('لطفاً اطلاعات مدرسه جدید را وارد کنید.');
+    }
+
+    // ============================================================
+    // تابع پیست مختصات (مشترک)
+    // ============================================================
+    async function pasteCoords() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text) return;
+            let parts = text.split(/[,\s]+/).filter(p => p.trim() !== '');
+            if (parts.length >= 2) {
+                const lat = parseFloat(parts[0].trim());
+                const lng = parseFloat(parts[1].trim());
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    document.getElementById('e_coords').value = lat + ',' + lng;
+                    msg('✅ مختصات از کلیپ‌بورد وارد شد.');
+                    return;
+                }
+            }
+            msg('❌ فرمت مختصات نامعتبر. لطفاً به صورت "lat,lng" کپی کنید.', true);
+        } catch (e) {
+            msg('❌ دسترسی به کلیپ‌بورد ممکن نیست. لطفاً دستی وارد کنید.', true);
+        }
+    }
+
+    // ============================================================
+    // ثبت مدرسه جدید
+    // ============================================================
+    async function addSchool() {
+        const name = document.getElementById('e_name').value.trim();
+        if (!name) {
+            msg('❌ نام مدرسه الزامی است.', true);
+            return;
+        }
+        const school_type = document.getElementById('e_school_type').value;
+        const sex = document.getElementById('e_sex').value;
+        const section = document.getElementById('e_section').value;
+        const city = document.getElementById('e_city').value.trim();
+        const address = document.getElementById('e_address').value.trim();
+        const phone1 = document.getElementById('e_phone1').value.trim();
+        const score = parseFloat(document.getElementById('e_score').value) || 0;
+
+        let lat = null, lng = null;
+        const coordsRaw = document.getElementById('e_coords').value.trim();
+        if (coordsRaw) {
+            const parts = coordsRaw.split(/[,\s]+/).filter(p => p !== '');
+            if (parts.length >= 2) {
+                lat = parseFloat(parts[0]);
+                lng = parseFloat(parts[1]);
+                if (isNaN(lat) || isNaN(lng)) {
+                    msg('❌ مختصات وارد شده معتبر نیست.', true);
+                    return;
+                }
+            } else {
+                msg('❌ فرمت مختصات باید شامل دو عدد با ویرگول یا فاصله باشد.', true);
+                return;
+            }
+        }
+
+        const newSchool = {
+            name: name,
+            school_type: school_type,
+            sex: sex,
+            section: section,
+            city: city,
+            address: address,
+            phone1: phone1,
+            score: score,
+            lat: lat,
+            lng: lng
+        };
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'add_school');
+            formData.append('school', JSON.stringify(newSchool));
+
+            const response = await fetch('index.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                msg('✅ مدرسه جدید با موفقیت ثبت شد.');
+                loadFromServer();
+                loadStats();
+                clearEditForm();
+            } else {
+                msg('❌ خطا در ثبت: ' + (result.error || ''), true);
+            }
+        } catch(e) {
+            msg('❌ خطا در ارتباط با سرور: ' + e.message, true);
+        }
+    }
+
+    // ============================================================
+    // پاک کردن فرم ویرایش
+    // ============================================================
+    function clearEditForm() {
+        document.getElementById('editArea').innerHTML = '<div class="muted">روی یک مارکر کلیک کنید یا برای ثبت جدید کلیک کنید.</div>';
+        currentSchoolIndex = null;
+        msg('');
+        disableCoordinatePicker(); // غیرفعال کردن حالت انتخاب و حذف مارکر
+    }
+
+    // ============================================================
+    // ذخیره تغییرات مدرسه (ویرایش)
+    // ============================================================
     async function saveSchool(i){
         const s = schools[i];
         s.notes = document.getElementById('e_notes').value;
@@ -677,6 +923,31 @@
         s.priority = document.getElementById('e_priority').value;
         s.contact_result = document.getElementById('e_contact_result').value;
         s.follow_up = document.getElementById('e_follow_up').value;
+
+        const coordsRaw = document.getElementById('e_coords').value.trim();
+        if (coordsRaw) {
+            const parts = coordsRaw.split(/[,\s]+/).filter(p => p !== '');
+            if (parts.length >= 2) {
+                const lat = parseFloat(parts[0]);
+                const lng = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    s.lat = lat;
+                    s.lng = lng;
+                    s._coords_verified = true;
+                    s._geocoded = false;
+                    delete s._geocoded_lat;
+                    delete s._geocoded_lng;
+                    delete s._geocode_info;
+                    s._geocode_status = 'verified';
+                } else {
+                    msg('❌ مختصات وارد شده معتبر نیست.', true);
+                    return;
+                }
+            } else {
+                msg('❌ فرمت مختصات باید شامل دو عدد با ویرگول یا فاصله باشد.', true);
+                return;
+            }
+        }
 
         saveLocalEdit(s);
 
@@ -690,7 +961,11 @@
                 contact_result: s.contact_result,
                 priority: s.priority,
                 follow_up: s.follow_up,
-                visited: s.visited
+                visited: s.visited,
+                lat: s.lat,
+                lng: s.lng,
+                _coords_verified: s._coords_verified,
+                _geocoded: s._geocoded
             }));
 
             const response = await fetch('index.php', {
@@ -700,6 +975,13 @@
             const result = await response.json();
             if (result.success) {
                 msg('✅ اطلاعات در سرور ذخیره شد.');
+                renderMarkers();
+                updateStats();
+                const marker = markers.find(m => {
+                    const p = m.getLatLng();
+                    return Math.abs(p.lat - s.lat) < 1e-9 && Math.abs(p.lng - s.lng) < 1e-9;
+                });
+                if (marker) marker.openPopup();
             } else {
                 msg('❌ خطا در ذخیره: ' + (result.error || ''), true);
             }
@@ -708,6 +990,9 @@
         }
     }
 
+    // ============================================================
+    // سایر توابع مدیریت مدرسه
+    // ============================================================
     function markVisited(i){
         schools[i].visited = !schools[i].visited;
         saveLocalEdit(schools[i]);
@@ -798,7 +1083,6 @@
     }
 
     function updateStats(){
-        // محاسبه آمار از داده‌های فعلی (مدارس بارگذاری شده در محدوده)
         const total = schools.length;
         let verified = 0, geocoded = 0, withoutCoords = 0;
         for (const s of schools) {
@@ -822,6 +1106,10 @@
 
     function msg(t, error=false){
         const el = document.getElementById('message');
+        if (!el) {
+            console.warn('عنصر پیام وجود ندارد:', t);
+            return;
+        }
         el.textContent = t;
         el.style.background = error ? '#ffecec' : '#eef5ff';
     }
