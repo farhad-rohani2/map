@@ -501,6 +501,15 @@
         .gps-marker.active div {
             box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.2);
         }
+        /* دکمه‌های GPS در یک ردیف */
+        .gps-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .gps-row button {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -531,8 +540,11 @@
                 <div class="stat-item"><b id="visitedCount">0</b><span class="label">بازدید شده</span></div>
             </div>
             <button class="info" onclick="loadStats()" style="width:100%;margin-top:6px">🔄 بروزرسانی آمار</button>
-            <!-- دکمه GPS -->
-            <button class="info" id="gpsButton" onclick="toggleGPS()" style="width:100%;margin-top:6px;">📍 فعال‌سازی GPS</button>
+            <!-- ردیف دکمه‌های GPS -->
+            <div class="gps-row">
+                <button class="info" id="gpsButton" onclick="toggleGPS()">📍 فعال‌سازی GPS</button>
+                <button class="info" id="goToMyLocationBtn" onclick="goToMyLocation()" disabled>📍 رفتن به موقعیت من</button>
+            </div>
         </div>
 
         <!-- فیلترهای پیشرفته -->
@@ -2026,6 +2038,7 @@
     // ============================================================
     function toggleGPS() {
         const btn = document.getElementById('gpsButton');
+        const goBtn = document.getElementById('goToMyLocationBtn');
 
         // اگر فعال است، غیرفعال کن
         if (gpsWatchId !== null) {
@@ -2038,6 +2051,7 @@
             gpsActive = false;
             btn.textContent = '📍 فعال‌سازی GPS';
             btn.classList.remove('success');
+            goBtn.disabled = true;
             msg('📍 GPS غیرفعال شد');
             return;
         }
@@ -2078,6 +2092,7 @@
                 gpsActive = true;
                 btn.textContent = '📍 غیرفعال‌سازی GPS';
                 btn.classList.add('success');
+                goBtn.disabled = false;
                 msg('📍 GPS فعال شد - موقعیت شما روی نقشه نمایش داده می‌شود');
             },
             (err) => {
@@ -2117,8 +2132,8 @@
         // پاپ‌آپ برای مارکر GPS
         gpsMarker.bindPopup(`📍 موقعیت شما<br>عرض: ${lat.toFixed(6)}<br>طول: ${lng.toFixed(6)}<br>دقت: ${Math.round(accuracy || 50)} متر`);
 
-        // زوم به موقعیت جدید (اختیاری)
-        // map.setView([lat, lng], 16);
+        // دکمه "رفتن به موقعیت من" را فعال کن
+        document.getElementById('goToMyLocationBtn').disabled = false;
     }
 
     function updateGpsPosition(lat, lng, accuracy) {
@@ -2136,8 +2151,21 @@
         gpsMarker.setPopupContent(
             `📍 موقعیت شما<br>عرض: ${lat.toFixed(6)}<br>طول: ${lng.toFixed(6)}<br>دقت: ${Math.round(accuracy || 50)} متر`
         );
-        // (اختیاری) نقشه را به موقعیت جدید منتقل کن
-        // map.panTo([lat, lng]);
+        // دکمه "رفتن به موقعیت من" فعال بماند
+        document.getElementById('goToMyLocationBtn').disabled = false;
+    }
+
+    // ============================================================
+    // رفتن به موقعیت GPS
+    // ============================================================
+    function goToMyLocation() {
+        if (!gpsMarker) {
+            msg('❌ موقعیت GPS در دسترس نیست. ابتدا GPS را فعال کنید.', true);
+            return;
+        }
+        const latlng = gpsMarker.getLatLng();
+        map.setView(latlng, 16);
+        msg('📍 نقشه به موقعیت شما منتقل شد.');
     }
 
     // ============================================================
